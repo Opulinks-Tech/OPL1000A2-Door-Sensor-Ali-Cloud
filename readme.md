@@ -1,6 +1,7 @@
 # Introduction
-This reference shows a "door sensor" application that connectted to Ali cloud 
+This reference shows a "door sensor" application that connected to Ali cloud 
 It supports below features:
+
 - BLE configure WIFI network 
 - Establish MQTT connection between OPL1000-A2 device and Ali cloud  
 
