@@ -542,7 +542,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>.\lib\symdefs.o</PathWithFileName>
+      <PathWithFileName>..\..\..\..\APS\targets\opl1000\object\symdefs.o</PathWithFileName>
       <FilenameWithoutPath>symdefs.o</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
@@ -554,7 +554,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>.\lib\opl1000_patch_m3.lib</PathWithFileName>
+      <PathWithFileName>..\..\..\..\APS\targets\opl1000\Output\Objects\opl1000_patch_m3.lib</PathWithFileName>
       <FilenameWithoutPath>opl1000_patch_m3.lib</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
@@ -566,7 +566,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>.\lib\opl1000_sdk_m3.lib</PathWithFileName>
+      <PathWithFileName>..\..\..\..\APS\targets\opl1000\Output\Objects\opl1000_sdk_m3.lib</PathWithFileName>
       <FilenameWithoutPath>opl1000_sdk_m3.lib</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
@@ -578,7 +578,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>.\lib\opl1000_aliyun.lib</PathWithFileName>
+      <PathWithFileName>..\..\..\..\APS\targets\opl1000\Output\Objects\opl1000_aliyun.lib</PathWithFileName>
       <FilenameWithoutPath>opl1000_aliyun.lib</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
@@ -735,7 +735,7 @@
 
   <Group>
     <GroupName>sensor</GroupName>
-    <tvExp>1</tvExp>
+    <tvExp>0</tvExp>
     <tvExpOptDlg>0</tvExpOptDlg>
     <cbSel>0</cbSel>
     <RteFlg>0</RteFlg>

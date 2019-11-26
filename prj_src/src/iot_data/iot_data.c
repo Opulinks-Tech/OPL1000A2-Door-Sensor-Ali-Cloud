@@ -18,6 +18,7 @@
 #include "blewifi_common.h"
 #include "blewifi_configuration.h"
 #include "blewifi_ctrl.h"
+#include "blewifi_wifi_api.h"
 
 #include "kvmgr.h"
 #include "kv.h"
@@ -194,6 +195,7 @@ extern user_example_ctx_t *user_example_get_ctx(void);
 void Iot_Data_RxTask(void *args)
 {
     int res = 0;
+	uint32_t dtimVal = 0;
     user_example_ctx_t *user_example_ctx = user_example_get_ctx();
 
     //while (1)
@@ -289,14 +291,31 @@ void Iot_Data_RxTask(void *args)
         {
             if (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_LINK_CONN))
             {
+				if ( BleWifi_Wifi_GetDTIM(&dtimVal) != 0 ) {
+					goto done;
+				}
+				if ( dtimVal != 0 ) {
+	                // Terence set DTIM = 0
+					//BLEWIFI_WARN("[%s %d] BleWifi_Wifi_SetDTIM(0)\n", __func__, __LINE__);
+	                BleWifi_Wifi_SetDTIM(0);
+				}
+
                 IOT_Linkkit_Tx();
 
                 IOT_Linkkit_Yield(USER_EXAMPLE_YIELD_TIMEOUT_MS);
+				if ( user_post_get_needReply() == 0 ) {
+	                // Terence set DTIM revert
+	                //BLEWIFI_WARN("[%s %d] BleWifi_Wifi_SetDTIM(%u)\n", __func__, __LINE__, BleWifi_Ctrl_DtimTimeGet());
+    	            BleWifi_Wifi_SetDTIM(BleWifi_Ctrl_DtimTimeGet());
+					osDelay(BleWifi_Ctrl_DtimTimeGet());  // Terence
+				}
+				else {
+					osDelay(1000);
+				}
                 // rx behavior
                 //osDelay(10000); // if do nothing for rx behavior, the delay must be exist.
                                // if do something for rx behavior, the delay could be removed
 
-                osDelay(2000);
             }
             else
             {

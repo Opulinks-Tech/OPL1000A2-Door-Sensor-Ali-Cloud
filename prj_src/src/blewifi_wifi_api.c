@@ -578,6 +578,26 @@ int BleWifi_Wifi_Rssi(int8_t *rssi)
     return wifi_connection_get_rssi(rssi);
 }
 
+int BleWifi_Wifi_GetDTIM(uint32_t *value)
+{
+    uint8_t DtimInterval = 0;
+    uint32_t ulDtimInterval = 0;
+
+	if ( wifi_config_get_skip_dtim(&DtimInterval) != 0 ) {
+		return -1;
+	}
+	ulDtimInterval = DtimInterval;
+
+	if ( ulDtimInterval == 0 ) {
+		*value = 0;
+	}
+	else {
+		*value = (ulDtimInterval+1) * g_ulBleWifi_Wifi_BeaconTime;
+	}
+	
+	return 0;
+}
+
 int BleWifi_Wifi_SetDTIM(uint32_t value)
 {
     uint32_t ulDtimInterval;

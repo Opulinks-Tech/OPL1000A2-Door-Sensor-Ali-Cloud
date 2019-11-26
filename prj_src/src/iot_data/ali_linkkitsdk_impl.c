@@ -19,7 +19,7 @@
 #include "lwip/etharp.h"
 #include "infra_report.h"
 
-
+uint8_t g_userNeedReply = 0;
 // {"LocalTimer":[  => 15
 // {"PowerSwitch":0,"Timer":"55 17 * * 1,2,3,4,5,6,7","Enable":1,"IsValid":1},  => 75
 // ]} and '\0'   => 3
@@ -92,60 +92,11 @@ static int user_service_request_event_handler(const int devid, const char *servi
     return 0;
 }
 
-#ifdef BLEWIFI_ALI_DEV_SCHED
-static int dev_sched_time_set(char *sTime, T_MwFim_GP23_Dev_Sched *ptSched)
-{
-    int iRet = -1;
-    uint8_t u8Mask = 0;
-    unsigned int uiMin = 0;
-    unsigned int uiHour = 0;
-    unsigned int uiaDay[8] = {0};
-    int iNum = 0;
-    int i = 0;
-
-    iNum = sscanf(sTime, "%u %u %*[^ ] %*[^ ] %u,%u,%u,%u,%u,%u,%u"
-                  , &uiMin, &uiHour
-                  , &(uiaDay[0]), &(uiaDay[1]), &(uiaDay[2]), &(uiaDay[3])
-                  , &(uiaDay[4]), &(uiaDay[5]), &(uiaDay[6]));
-
-    if(iNum < 2)
-    {
-        goto done;
-    }
-
-    if((uiMin > 59) || (uiHour > 23))
-    {
-        goto done;
-    }
-
-    ptSched->u8Hour = (uint8_t)uiHour;
-    ptSched->u8Min = (uint8_t)uiMin;
-
-    iNum -= 2;
-
-    for(i = 0; i < iNum; i++)
-    {
-        if((uiaDay[i] >= 1) && (uiaDay[i] <= 7))
-        {
-            u8Mask |= (1 << uiaDay[i]);
-        }
-    }
-
-    ptSched->u8RepeatMask = u8Mask;
-
-    iRet = 0;
-
-done:
-    return iRet;
-}
-#endif //#ifdef BLEWIFI_ALI_DEV_SCHED
-
 static int user_property_set_event_handler(const int devid, const char *request, const int request_len)
 {
 #ifdef BLEWIFI_ALI_DEV_SCHED
     //IoT_Properity_t IoT_Properity;
-    cJSON *request_root = NULL, *item_PowerSwitch = NULL, *item_localtimer = NULL;;
-    cJSON *sub_item = NULL, *item_timer = NULL, *item_enable = NULL, *item_isvalid = NULL, *subitem_powerswitch = NULL;
+    cJSON *request_root = NULL, *item_LedLightSwitch = NULL;
     user_example_ctx_t *user_example_ctx = user_example_get_ctx();
     printf("Property Set Received, Devid: %d, Request: %s\r\n", devid, request);
 
@@ -155,17 +106,16 @@ static int user_property_set_event_handler(const int devid, const char *request,
         EXAMPLE_TRACE("JSON Parse Error");
         return -1;
     }
-
-    /* Try To Find PowerSwitch Property */
-    item_PowerSwitch = cJSON_GetObjectItem(request_root, "PowerSwitch");
-    if (item_PowerSwitch != NULL) {
-        EXAMPLE_TRACE("PowerSwitch Enable : %d\r\n", item_PowerSwitch->valueint);
-        //IoT_Properity.ubPowerSwitch = (uint8_t)item_PowerSwitch->valueint;    
-        //IoT_Ring_Buffer_Push(&IoT_Properity);
+    /* start : Add you code to handle request data */
+    
+    /* Try To Find LedLightSwitch Property */
+    item_LedLightSwitch = cJSON_GetObjectItem(request_root, "LedLightSwitch");
+    if (item_LedLightSwitch != NULL) {
+        EXAMPLE_TRACE("LedLightSwitch Enable : %d\r\n", item_LedLightSwitch->valueint);
 
         T_BleWifi_Ctrl_DevStatus tStatus = {0};
 
-        tStatus.u8DevOn = item_PowerSwitch->valueint;
+        tStatus.u8DevOn = item_LedLightSwitch->valueint;
         tStatus.u8LedOn = tStatus.u8DevOn;
 
         if(BleWifi_Ctrl_DevStatusSet(&tStatus))
@@ -174,59 +124,14 @@ static int user_property_set_event_handler(const int devid, const char *request,
         }
     }
     
-     /* Try To Find LocalTimer Property */
-    item_localtimer = cJSON_GetObjectItem(request_root, "LocalTimer");
-    EXAMPLE_TRACE("Local Timer Size: %d", cJSON_GetArraySize(item_localtimer));
-    if (item_localtimer != NULL && cJSON_IsArray(item_localtimer)) {
-        int index = 0;
-        int iArraySize = cJSON_GetArraySize(item_localtimer);
-        T_BleWifi_Ctrl_DevSchedAll tSchedAll = {0};
+    /* end : Add you code to handle request data */
 
-        tSchedAll.u8Num = (uint8_t)iArraySize;
-
-        for (index = 0; index < iArraySize; index++) {
-            sub_item = cJSON_GetArrayItem(item_localtimer, index);
-            if (sub_item != NULL && cJSON_IsObject(sub_item)) {
-                item_timer          = NULL;
-                item_enable         = NULL;
-                item_isvalid        = NULL;
-                subitem_powerswitch = NULL;
-                subitem_powerswitch = cJSON_GetObjectItem(sub_item, "PowerSwitch");
-                item_timer          = cJSON_GetObjectItem(sub_item, "Timer");
-                item_enable         = cJSON_GetObjectItem(sub_item, "Enable");
-                item_isvalid        = cJSON_GetObjectItem(sub_item, "IsValid");
-                if (item_timer != NULL && item_enable != NULL && item_isvalid != NULL && subitem_powerswitch != NULL) {
-                    EXAMPLE_TRACE("Local Timer Index: %d", index);
-                    EXAMPLE_TRACE("PowerSwitch      : %d", subitem_powerswitch->valueint);
-                    EXAMPLE_TRACE("Timer            : %s", item_timer->valuestring);
-                    EXAMPLE_TRACE("Enable           : %d", item_enable->valueint);
-                    EXAMPLE_TRACE("IsValid          : %d", item_isvalid->valueint);
-
-                    tSchedAll.taSched[index].u8Enable = item_enable->valueint;
-                    tSchedAll.taSched[index].u8IsValid = item_isvalid->valueint;
-                    tSchedAll.taSched[index].u8DevOn = subitem_powerswitch->valueint;
-                    tSchedAll.taSched[index].u8LedOn = tSchedAll.taSched[index].u8DevOn;
-
-                    if(dev_sched_time_set(item_timer->valuestring, &(tSchedAll.taSched[index])))
-                    {
-                        EXAMPLE_TRACE("dev_sched_time_set fail\r\n");
-
-                        tSchedAll.taSched[index].u8Enable = 0;
-                    }
-                }
-            }
-        }
-
-        if(BleWifi_Ctrl_DevSchedSetAll(&tSchedAll))
-        {
-            EXAMPLE_TRACE("BleWifi_Ctrl_DevSchedSetAll fail\r\n");
-        }
-    }
     cJSON_Delete(request_root);
 
     int res = IOT_Linkkit_Report(user_example_ctx->master_devid, ITM_MSG_POST_PROPERTY,
                              (unsigned char *)request, request_len);
     EXAMPLE_TRACE("Post Property Message ID: %d", res);
+	user_post_add_needReply();
 #endif //#ifdef BLEWIFI_ALI_DEV_SCHED
 
     return 0;
@@ -251,7 +156,7 @@ static int user_report_reply_event_handler(const int devid, const int msgid, con
     EXAMPLE_TRACE("Message Post Reply Received, Devid: %d, Message ID: %d, Code: %d, Reply: %.*s", devid, msgid, code,
                   reply_value_len,
                   reply_value);
-
+	user_post_sub_needReply();
     return 0;
 }
 
@@ -414,7 +319,7 @@ void user_post_property(IoT_Properity_t *ptProp)
 
     EXAMPLE_TRACE("Post Property Message ID: %d, Len[%d]", res, u32Offset);
 
-
+	user_post_add_needReply();
 PROPERITY_ERR:
     if (ps8Buf) {
         HAL_Free(ps8Buf);
@@ -454,6 +359,19 @@ PROPERITY_ERR:
     
 }
 #endif
+
+void user_post_add_needReply(void) {
+	g_userNeedReply++;
+}
+void user_post_sub_needReply(void) {
+	if ( g_userNeedReply == 0) {
+		return;
+	}
+	g_userNeedReply--;
+}
+uint8_t user_post_get_needReply(void) {
+	return g_userNeedReply;
+}
 
 void user_post_event(void)
 {

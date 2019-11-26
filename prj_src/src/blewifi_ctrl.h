@@ -29,7 +29,7 @@
 #define BLEWIFI_CTRL_QUEUE_SIZE         (20)
 
 //#define BLEWIFI_ALI_BOOT_RESET
-//#define BLEWIFI_ALI_DEV_SCHED
+#define BLEWIFI_ALI_DEV_SCHED
 
 typedef enum blewifi_ctrl_msg_type
 {

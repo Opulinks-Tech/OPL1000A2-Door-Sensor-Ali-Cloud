@@ -1322,6 +1322,7 @@ void BleWifi_Ctrl_ButtonReleaseHandle(uint8_t u8ReleaseCount)
 
     if(u8ReleaseCount == 1)
     {
+        /*
         uint8_t u8On = !(g_tBleWifiDevStatus.u8DevOn);
 
         BLEWIFI_INFO("[%s %d] release once\n", __func__, __LINE__);
@@ -1329,6 +1330,7 @@ void BleWifi_Ctrl_ButtonReleaseHandle(uint8_t u8ReleaseCount)
         // toggle device and led 
         dev_set(u8On, 1);
         led_ctrl(u8On, 1);
+        */
     }
     else if(u8ReleaseCount >= 3)
     {

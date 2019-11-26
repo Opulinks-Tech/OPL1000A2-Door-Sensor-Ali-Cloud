@@ -17,7 +17,7 @@
 /*
 FIM version
 */
-#define MW_FIM_VER11_PROJECT            0x05    // 0x00 ~ 0xFF
+#define MW_FIM_VER11_PROJECT            0x06    // 0x00 ~ 0xFF
 
 /*
 Smart sleep
@@ -53,10 +53,10 @@ BLE OTA FLAG
 /* 
 WIFI OTA FLAG 
 */
-#define WIFI_OTA_FUNCTION_EN     (1)  // WIFI OTA Function Enable (1: enable / 0: disable)
+#define WIFI_OTA_FUNCTION_EN     (0)  // WIFI OTA Function Enable (1: enable / 0: disable)
 #define WIFI_OTA_HTTP_URL        "http://192.168.0.100/ota.bin"
 
-#define WIFI_OTA_AUTOCHECK_EN    (1)
+#define WIFI_OTA_AUTOCHECK_EN    (0)
 #define WIFI_OTA_UPGRADE_URL     "http://118.31.62.158:80/git/ada_per/opl1000_ota_door.bin"
 #define WIFI_OTA_SCHED_TIME      (24*60) //minutes
 

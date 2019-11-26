@@ -1,37 +1,37 @@
-## Function / Feature
-- This reference realizes sensor type product and uploading to cloud periodically function. 
-- Ali could MQTT protocol is supported.
-- Single chip solution, application runs on OPL1000 M3 MCU.
-- Adopt BLE configure WIFI AP to connect Internet / cloud. 
-- Smart sleep and auto-connection are support. 
- 
- 
-## Work Frame
-![avatar](sensor_frame.PNG)
+## 功能清单
+- 实现门磁闭合状态的上报和LED灯的开关的下行控制功能；
+- 采用MQTT协议与阿里云端通讯；
+- 单芯片方案, 应用程序运行在 OPL1000 M3 微处理器上；
+- 支持阿里云智能APP BLE辅助配网， WIFI 连接AP 后与阿里云端通讯； 
+- 支持Smart sleep模式和WiFi自动重连功能； 
+- 支持超低功耗设计方案； 
+- 在单个阿里云智能APP上实现控制LED灯的开关和显示门磁的闭合状态；     
 
-## Directory and Content 
+## 功能框图
+![avatar](magnetic_door_contact_LED_device_frame.PNG)
 
+## 目录结构
 
-**prj_src** folder
+**prj_src** 
 
-- Contains reference design source code, include library, implementation c code and project files. 
+- 包含该工程的源文件, 包括头文件，库文件和工程文件等。
 
-**Doc** folder
+**Doc** 
 
-- Contains this reference application guide , Ali key and app generation guide document. 
+- 包含应用开发手册。 
 
-**FW_Binary** folder
+**FW_Binary** 
 
-- Contains m0 bin file and pack script file that used to generate an integrated firmware.
-- opl1000.bin: OPL1000 integrated firmware file. User can download it to "door sensor" type device and evaluate its function directly. 
-- Note: in order to avoid device "Ali Key 5 elements" conflict, user shall apply new "Ali Key 5 elements" from Ali cloud. Refer "OPL1000_ali_key&app_create_guide.pdf" document to know detailed information.  
+ - 包含M0 固件，OTA loader 和用于pack的脚本文件，用于产生OTA image 固件文件.
+ - opl1000_m0 bin 适配于使用内部DC-DC的硬件参考设计
+ - opl1000_m0_ldo.bin 适配于使用外部LDO的硬件参考设计
+ - opl1000_ali_sensor.bin: OPL1000 固件文件. 用户可以直接下载到相应的开发板上做功能验证. 
 
+## 应用程序的二次开发
 
-## Develop application based on reference
+用户可以参考该工程实现阿里双向控制应用（上行和下行数据共存，通过MQTT协议与阿里云端通讯）的开发. 通常包括三个步骤.
 
-User can develop sensor type application based on provided reference design. Generally it includes 4 steps.
+1. 在阿里云端注册并定义好设备，获取设备的五元组； 
+2. 基于现有的工程，按需修改或扩展现有的功能；
+3. 查看设备端，云智能APP端，和阿里云平台侧的log或状态，验证预期的功能。 
 
-1.  Register and create product/device on Ali cloud, define its property and get  "5 elements set" parameters for application development. 
-2.  Modify / extend functions based on existing reference design.
-3.  Create Ali cloud function APP . 
-4.  Verify message transferring  between IOT device, cloud and mobile APP, and validate functions / features.  

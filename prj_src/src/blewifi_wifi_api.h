@@ -128,6 +128,7 @@ uint8_t BleWifi_Wifi_AutoConnectListNum(void);
 void BleWifi_Wifi_DoAutoConnect(void);
 void BleWifi_Wifi_ReqConnectRetry(void);
 int BleWifi_Wifi_Rssi(int8_t *rssi);
+int BleWifi_Wifi_GetDTIM(uint32_t *value);
 int BleWifi_Wifi_SetDTIM(uint32_t value);
 void BleWifi_Wifi_UpdateBeaconInfo(void);
 	

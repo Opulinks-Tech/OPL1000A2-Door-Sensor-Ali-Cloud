@@ -51,7 +51,7 @@ typedef struct {
     #define CUSTOME_DOMAIN_HTTP     "iot-auth.cn-shanghai.aliyuncs.com"
 #endif
 
-#define USER_EXAMPLE_YIELD_TIMEOUT_MS (1000) //Kevin add it
+#define USER_EXAMPLE_YIELD_TIMEOUT_MS (100) //Kevin add it
 
 #define EXAMPLE_TRACE(...)                               \
 do {                                                     \
@@ -60,6 +60,9 @@ do {                                                     \
     HAL_Printf("\033[0m\r\n");                                   \
 } while (0)
 
+void user_post_add_needReply(void);
+void user_post_sub_needReply(void);
+uint8_t user_post_get_needReply(void);
 
 
 int ali_linkkit_init(user_example_ctx_t *user_example_ctx);
