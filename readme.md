@@ -8,7 +8,7 @@
 - 在单个阿里云智能APP上实现控制LED灯的开关和显示门磁的闭合状态；     
 
 ## 功能框图
-![avatar](https://github.com/Opulinks-Tech/OPL1000A2-Sensor-Device-Reference-Code-Ali-Cloud-with-MQTT/edit/master/magnetic_door_contact_LED_device_frame.PNG)
+![avatar](https://github.com/Opulinks-Tech/OPL1000A2-Sensor-Device-Reference-Code-Ali-Cloud-with-MQTT/blob/master/magnetic_door_contact_LED_device_frame.png)
 
 ## 目录结构
 
