@@ -103,6 +103,8 @@ typedef enum blewifi_ctrl_sys_state
     BLEWIFI_CTRL_SYS_NUM
 } blewifi_ctrl_sys_state_e;
 
+#define POST_DATA_TIME              (3600000)  // 1 hour - smart sleep for one hour then post data
+
 // event group bit (0 ~ 23 bits)
 #define BLEWIFI_CTRL_EVENT_BIT_BLE      0x00000001U
 #define BLEWIFI_CTRL_EVENT_BIT_WIFI     0x00000002U
@@ -223,6 +225,8 @@ void BleWifi_Ctrl_NetworkingStart(void);
 void BleWifi_Ctrl_NetworkingStop(void);
 
 void BleWifi_Ctrl_BootCntUpdate(void);
+
+static void door_status_post(void);
 
 #endif /* __BLEWIFI_CTRL_H__ */
 

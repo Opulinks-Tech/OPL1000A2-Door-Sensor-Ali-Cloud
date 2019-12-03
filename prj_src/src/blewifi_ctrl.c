@@ -73,6 +73,8 @@ osThreadId   g_tAppCtrlTaskId;
 osMessageQId g_tAppCtrlQueueId;
 osTimerId    g_tAppCtrlAutoConnectTriggerTimer;
 osTimerId    g_tAppCtrlSysTimer;
+osTimerId    g_tAppCtrlHttpPostTimer;
+
 EventGroupHandle_t g_tAppCtrlEventGroup;
 
 uint8_t g_ulAppCtrlSysMode;
@@ -227,6 +229,11 @@ static T_BleWifi_Ctrl_EvtHandlerTbl g_tCtrlEvtHandlerTbl[] =
 
     {0xFFFFFFFF,                                        NULL}
 };
+
+void BleWifi_Ctrl_HttpPostData(void const *argu)
+{
+	door_status_post();
+}
 
 void BleWifi_Ctrl_SysModeSet(uint8_t mode)
 {
@@ -715,6 +722,9 @@ static void BleWifi_Ctrl_TaskEvtHandler_WifiDisconnectionInd(uint32_t evt_type, 
 
     lwip_one_shot_arp_enable();//Goter
 
+    // Stop Http Post Timer
+    osTimerStop(g_tAppCtrlHttpPostTimer);
+
     // continue the connection retry
     if (g_ubAppCtrlRequestRetryTimes < g_tAppCtrlWifiConnectSettings.ubConnectRetry)
     {
@@ -806,6 +816,9 @@ static void BleWifi_Ctrl_TaskEvtHandler_WifiGotIpInd(uint32_t evt_type, void *da
     #if (WIFI_OTA_AUTOCHECK_EN == 1)
     blewifi_ctrl_ota_sched_start(BLE_WIFI_OTA_AFTER_GOT_IP);
     #endif
+    // When got ip then start timer to post data
+    osTimerStop(g_tAppCtrlHttpPostTimer);
+    osTimerStart(g_tAppCtrlHttpPostTimer, POST_DATA_TIME);
 }
 
 static void BleWifi_Ctrl_TaskEvtHandler_WifiAutoConnectInd(uint32_t evt_type, void *data, int len)
@@ -2064,6 +2077,8 @@ void BleWifi_Ctrl_Init(void)
     osTimerDef_t timer_auto_connect_def;
     osTimerDef_t timer_sys_def;
     osTimerDef_t timer_blink_def;
+	osTimerDef_t timer_http_post_def;
+
 
     /* Create ble-wifi task */
 #ifdef ALI_SINGLE_TASK
@@ -2154,6 +2169,14 @@ void BleWifi_Ctrl_Init(void)
     {
         // if fail, get the default value
         memcpy(&g_tAppCtrlWifiConnectSettings, &g_tMwFimDefaultGp11WifiConnectSettings, MW_FIM_GP11_WIFI_CONNECT_SETTINGS_SIZE);
+    }
+
+	/* create http post timer */
+    timer_http_post_def.ptimer = BleWifi_Ctrl_HttpPostData;
+    g_tAppCtrlHttpPostTimer = osTimerCreate(&timer_http_post_def, osTimerPeriodic, NULL);
+    if(g_tAppCtrlHttpPostTimer == NULL)
+    {
+        BLEWIFI_ERROR("BLEWIFI: ctrl task create Http Post timer fail \r\n");
     }
 
     /* the init state of SYS is init */

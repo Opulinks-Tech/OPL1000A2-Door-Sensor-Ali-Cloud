@@ -31,8 +31,7 @@
 #include "ali_hal_decl.h"
 #include "iot_rb_data.h"
 
-
-
+#define POST_DATA_AFTER_PROPERTY_SET
 
 void *HAL_Malloc(uint32_t size);
 void HAL_Free(void *ptr);
@@ -59,10 +58,6 @@ do {                                                     \
     HAL_Printf(__VA_ARGS__);                                 \
     HAL_Printf("\033[0m\r\n");                                   \
 } while (0)
-
-void user_post_add_needReply(void);
-void user_post_sub_needReply(void);
-uint8_t user_post_get_needReply(void);
 
 
 int ali_linkkit_init(user_example_ctx_t *user_example_ctx);

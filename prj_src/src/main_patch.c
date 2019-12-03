@@ -111,46 +111,6 @@ C Functions
 ***********/
 // Sec 8: C Functions
 
-extern T_IpcRbReadWriteBufGetFp ipc_rb_write;
-
-void *ipc_rb_write_patch(void *pRb)
-{
-    extern void *ipc_rb_write_impl(void *pRb);
-
-    T_IpcCommRb *ptRb = (T_IpcCommRb *)pRb;
-    void *pBuf = NULL;
-
-    if(IPC_RB_FULL(ptRb))
-    {
-        goto done;
-    }
-
-    pBuf = ipc_rb_write_impl(pRb);
-
-done:
-    return pBuf;
-}
-
-int ipc_wifi_cmd_send_patch(uint32_t dwType, void *pData, uint32_t dwDataLen)
-{
-    extern int ipc_wifi_cmd_send_impl(uint32_t dwType, void *pData, uint32_t dwDataLen);
-
-    int iRet = -1;
-    uint32_t u32Total = 0;
-    uint32_t u32Cnt = 0;
-
-    u32Cnt = ipc_wifi_cmd_count_get(&u32Total);
-
-    if(u32Cnt >= u32Total)
-    {
-        goto done;
-    }
-
-    iRet = ipc_wifi_cmd_send_impl(dwType, pData, dwDataLen);
-
-done:
-    return iRet;
-}
 
 /*************************************************************************
 * FUNCTION:
@@ -198,8 +158,6 @@ void __Patch_EntryPoint(void)
     at_blewifi_init_adpt = Main_BleWifiInit;
 #endif
 
-    ipc_rb_write = ipc_rb_write_patch;
-    ipc_wifi_cmd_send = ipc_wifi_cmd_send_patch;
 }
 
 /*************************************************************************

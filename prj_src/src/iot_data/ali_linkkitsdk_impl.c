@@ -18,8 +18,8 @@
 #include "blewifi_ctrl_http_ota.h"
 #include "lwip/etharp.h"
 #include "infra_report.h"
+#include "blewifi_wifi_api.h"
 
-uint8_t g_userNeedReply = 0;
 // {"LocalTimer":[  => 15
 // {"PowerSwitch":0,"Timer":"55 17 * * 1,2,3,4,5,6,7","Enable":1,"IsValid":1},  => 75
 // ]} and '\0'   => 3
@@ -126,14 +126,21 @@ static int user_property_set_event_handler(const int devid, const char *request,
     
     /* end : Add you code to handle request data */
 
-    cJSON_Delete(request_root);
-
+#ifdef POST_DATA_AFTER_PROPERTY_SET
     int res = IOT_Linkkit_Report(user_example_ctx->master_devid, ITM_MSG_POST_PROPERTY,
                              (unsigned char *)request, request_len);
     EXAMPLE_TRACE("Post Property Message ID: %d", res);
-	user_post_add_needReply();
-#endif //#ifdef BLEWIFI_ALI_DEV_SCHED
 
+	uint32_t dtimVal = 0;
+	BleWifi_Wifi_GetDTIM(&dtimVal);
+	if ( dtimVal != 0 ) {
+		EXAMPLE_TRACE("[%s %d] BleWifi_Wifi_SetDTIM(0)\n", __func__, __LINE__);
+		BleWifi_Wifi_SetDTIM(0);
+	}
+#endif //#ifdef POST_DATA_AFTER_PROPERTY_SET
+
+    cJSON_Delete(request_root);
+#endif //#ifdef BLEWIFI_ALI_DEV_SCHED
     return 0;
 }
 
@@ -156,7 +163,14 @@ static int user_report_reply_event_handler(const int devid, const int msgid, con
     EXAMPLE_TRACE("Message Post Reply Received, Devid: %d, Message ID: %d, Code: %d, Reply: %.*s", devid, msgid, code,
                   reply_value_len,
                   reply_value);
-	user_post_sub_needReply();
+#ifdef POST_DATA_AFTER_PROPERTY_SET
+	uint32_t dtimVal = 0;
+	BleWifi_Wifi_GetDTIM(&dtimVal);
+	if ( dtimVal == 0 ) {
+		EXAMPLE_TRACE("[%s %d] BleWifi_Wifi_SetDTIM(%d)\n", __func__, __LINE__, BleWifi_Ctrl_DtimTimeGet());
+		BleWifi_Wifi_SetDTIM(BleWifi_Ctrl_DtimTimeGet());
+	}
+#endif //#ifdef POST_DATA_AFTER_PROPERTY_SET
     return 0;
 }
 
@@ -319,7 +333,6 @@ void user_post_property(IoT_Properity_t *ptProp)
 
     EXAMPLE_TRACE("Post Property Message ID: %d, Len[%d]", res, u32Offset);
 
-	user_post_add_needReply();
 PROPERITY_ERR:
     if (ps8Buf) {
         HAL_Free(ps8Buf);
@@ -359,19 +372,6 @@ PROPERITY_ERR:
     
 }
 #endif
-
-void user_post_add_needReply(void) {
-	g_userNeedReply++;
-}
-void user_post_sub_needReply(void) {
-	if ( g_userNeedReply == 0) {
-		return;
-	}
-	g_userNeedReply--;
-}
-uint8_t user_post_get_needReply(void) {
-	return g_userNeedReply;
-}
 
 void user_post_event(void)
 {

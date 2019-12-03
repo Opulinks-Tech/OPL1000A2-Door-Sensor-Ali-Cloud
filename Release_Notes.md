@@ -1,5 +1,27 @@
 ﻿## Release Version:
 
+Reference Package: v1.2.13
+Library : 4132
+
+
+## Release Date: 2019/12/03
+
+## Function & Feature Update 
+
+1. FW_Binary pack script file is updated.   
+2. Add define POST_DATA_AFTER_PROPERTY_SET to control whether post status after property_set. 
+3. When post status after property_set, set DTIM as 0; when get post_reply, set DTIM as 3000 ms.
+4. Support hourly post status.
+5. Lib sync-up to A2 SDK MP2.15
+
+## Bug Fix List 
+
+
+## Notes List
+ 
+*****
+## Release Version:
+
 Reference Package: v1.2.12
 Library : 4048
 
