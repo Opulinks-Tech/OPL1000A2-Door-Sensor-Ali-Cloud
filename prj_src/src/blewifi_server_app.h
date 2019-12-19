@@ -28,7 +28,7 @@
 // Maximum connection interval (units of 1.25ms) if automatic parameter update request is enabled
 #define DEFAULT_DESIRED_SUPERVERSION_TIMEOUT   	500
 
-#define LE_GATT_DATA_OUT_BUF_SIZE				1024
+#define LE_GATT_DATA_OUT_BUF_SIZE				512
 
 #define BLE_ADV_SCAN_BUF_SIZE                   31
 

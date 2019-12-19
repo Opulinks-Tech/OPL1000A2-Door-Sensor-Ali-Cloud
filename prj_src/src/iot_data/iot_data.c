@@ -27,6 +27,7 @@
 #include "hal_vic.h"
 #include "infra_config.h"
 #include "awss_dev_reset.h"
+#include "mqtt_wrapper.h"
 
 
 #if (IOT_DEVICE_DATA_TX_EN == 1)
@@ -121,7 +122,7 @@ int Iot_Data_TxTask_MsgSend(int msg_type, uint8_t *data, int data_len)
 
 	if (NULL == g_tAppIotDataTxQueueId)
 	{
-        BLEWIFI_ERROR("BLEWIFI: No IoT Tx task queue \r\n");
+        BLEWIFI_ERROR("IotTx: queue is null\n");
         return -1;
 	}
 
@@ -129,7 +130,7 @@ int Iot_Data_TxTask_MsgSend(int msg_type, uint8_t *data, int data_len)
     pMsg = malloc(sizeof(xIotDataMessage_t) + data_len);
     if (pMsg == NULL)
 	{
-        BLEWIFI_ERROR("BLEWIFI: IoT Tx task pmsg allocate fail \r\n");
+        BLEWIFI_ERROR("IotTx: malloc fail\n");
 	    goto error;
     }
     
@@ -142,7 +143,7 @@ int Iot_Data_TxTask_MsgSend(int msg_type, uint8_t *data, int data_len)
 
     if (osMessagePut(g_tAppIotDataTxQueueId, (uint32_t)pMsg, osWaitForever) != osOK)
     {
-        BLEWIFI_ERROR("BLEWIFI: IoT Tx task message send fail \r\n");
+        BLEWIFI_ERROR("IotTx: osMessagePut fail\n");
         goto error;
     }
 
@@ -183,7 +184,7 @@ void Iot_Data_TxInit(void)
     g_tAppIotDataTxQueueId = osMessageCreate(&queue_def, NULL);
     if(g_tAppIotDataTxQueueId == NULL)
     {
-        BLEWIFI_ERROR("BLEWIFI: IoT Tx create queue fail \r\n");
+        BLEWIFI_ERROR("IotTx: osMessageCreate fail\n");
     }
 }
 #endif  // end of #if (IOT_DEVICE_DATA_TX_EN == 1)
@@ -202,10 +203,11 @@ void Iot_Data_RxTask(void *args)
         if (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_PREPARE_ALI_RESET))
         {
             BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_PREPARE_ALI_RESET, false);
-
             BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_WAIT_ALI_RESET, true);
 
-            printf("[%s %d] awss_report_reset\n", __func__, __LINE__);
+            #ifdef ALI_UNBIND_REFINE
+            HAL_SetReportReset(1);
+            #endif
             
             awss_report_reset();
             goto done;
@@ -225,7 +227,11 @@ void Iot_Data_RxTask(void *args)
     
                 BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_UNBIND, false);
                 BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT, false);
+
+                #ifdef ALI_UNBIND_REFINE
+                #else
                 BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_LINK_CONN, false);
+                #endif
     
                 goto done;
             }
@@ -279,11 +285,15 @@ void Iot_Data_RxTask(void *args)
                 }else{
                     printf("BLEWIFI_CTRL_EVENT_BIT_IOT_INIT------------------true\r\n");
                     BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT, true);
+
+                    #ifdef ALI_UNBIND_REFINE
+                    #else
                     BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_UNBIND, false);
+                    #endif
                 }
             }
 
-            goto done;
+            //goto done;
         }
 
         //else
@@ -297,12 +307,11 @@ void Iot_Data_RxTask(void *args)
                 // rx behavior
                 //osDelay(10000); // if do nothing for rx behavior, the delay must be exist.
                                // if do something for rx behavior, the delay could be removed
-				osDelay(3000);
-
+				osDelay(g_RxTaskDelayTime);
             }
             else
             {
-                //osDelay(ALI_YUN_LINKKIT_DELAY);
+                osDelay(ALI_YUN_LINKKIT_DELAY);
             }
         }  
     }

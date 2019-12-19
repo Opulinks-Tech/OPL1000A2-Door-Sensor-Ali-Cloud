@@ -18,6 +18,7 @@
 #include "blewifi_server_app.h"
 #include "blewifi_ctrl.h"
 #include "passwd.h"
+#include "infra_config.h"
 
 #define RANDOM_LEN 16
 #define SHA256_DATA_LEN 32
@@ -46,6 +47,10 @@ breeze_apinfo_t comboinfo;
 #define PRODUCT_KEY_STR "productKey"
 
 //const static char m_sdk_version[] = ":" BZ_VERSION;
+
+#ifdef ALI_APP_TOKEN_BACKUP
+extern uint8_t g_u8aAppToken[RANDOM_MAX_LEN];
+#endif
 
 typedef ret_code_t (*ext_tlv_handler_t)(uint8_t *p_buff, uint8_t *p_blen,
                                         const uint8_t *p_data, uint8_t dlen);
@@ -250,6 +255,14 @@ static ret_code_t ext_cmd06_rsp(uint8_t *p_buff, uint8_t *p_blen, const uint8_t 
                 }
                 comboinfo.apptoken_len = tlvlen;
                 memcpy(comboinfo.apptoken, &p_data[idx], tlvlen);
+
+                #ifdef ALI_APP_TOKEN_BACKUP
+                if(tlvlen <= RANDOM_MAX_LEN)
+                {
+                    memcpy(g_u8aAppToken, &p_data[idx], tlvlen);
+                }
+                #endif
+
                 ready_flag |= APPTOKEN_READY;
                 break;
             default:

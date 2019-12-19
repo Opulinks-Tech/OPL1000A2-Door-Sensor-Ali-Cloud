@@ -26,6 +26,7 @@ int HAL_GetProductSecret(char product_secret[IOTX_PRODUCT_SECRET_LEN + 1]);
 int HAL_GetDeviceName(char device_name[IOTX_DEVICE_NAME_LEN + 1]);
 int HAL_GetDeviceSecret(char device_secret[IOTX_DEVICE_SECRET_LEN + 1]);
 int HAL_GetFirmwareVersion(char *version);
+int HAL_GetDeviceID(char device_id[IOTX_DEVICE_ID_LEN+1]);
 
 #ifdef DYNAMIC_REGISTER
 int HAL_SetDeviceSecret(char *device_secret);
@@ -45,6 +46,9 @@ int HAL_Kv_Get(const char *key, void *val, int *buffer_len);
     int32_t HAL_TCP_Write(uintptr_t fd, const char *buf, uint32_t len, uint32_t timeout_ms);
     int32_t HAL_TCP_Read(uintptr_t fd, char *buf, uint32_t len, uint32_t timeout_ms);
 #endif
+
+uint8_t HAL_GetReportReset(void);
+void HAL_SetReportReset(uint8_t u8Reset);
 
 /* mqtt protocol wrapper */
 void *wrapper_mqtt_init(iotx_mqtt_param_t *mqtt_params);

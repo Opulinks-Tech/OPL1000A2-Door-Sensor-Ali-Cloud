@@ -1,6 +1,10 @@
 #ifndef _DM_SERVER_H_
 #define _DM_SERVER_H_
 
+#include "iotx_coap_internal.h"
+#include "iotx_alcs.h"
+#include "infra_config.h"
+
 #ifdef ALCS_ENABLED
 typedef struct {
     const char *uri_name;

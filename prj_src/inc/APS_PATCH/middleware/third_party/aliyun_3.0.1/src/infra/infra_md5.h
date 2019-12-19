@@ -16,6 +16,21 @@ typedef struct {
     unsigned char buffer[64];   /*!< data block being processed */
 } iot_md5_context;
 
+#ifdef INFRA_MD5_ALT
+
+#include "mbedtls/md5.h"
+
+#define utils_md5_init     mbedtls_md5_init
+#define utils_md5_free     mbedtls_md5_free
+#define utils_md5_clone    mbedtls_md5_clone
+#define utils_md5_starts   mbedtls_md5_starts
+#define utils_md5_update   mbedtls_md5_update
+#define utils_md5_finish   mbedtls_md5_finish
+#define utils_md5_process  mbedtls_md5_process
+
+#define iot_md5_context    mbedtls_md5_context
+#endif
+
 /**
  * \brief          Initialize MD5 context
  *

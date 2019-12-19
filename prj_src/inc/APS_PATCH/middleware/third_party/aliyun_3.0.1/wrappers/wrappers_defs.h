@@ -93,7 +93,7 @@ void Ali_Netlink_Awss_Report_Token_To_Cloud(uint32_t evt_type, void *data, int l
 void Ali_Netlink_Awss_Dev_Bind_Notify(uint32_t evt_type, void *data, int len);
 void __Ali_Netlink_Awss_Dev_Bind_Notify(uint32_t evt_type, void *data, int len);
 //void Iot_Awss_Dev_Info_Notify(uint32_t evt_type, void *data, int len);
-extern int __awss_suc_notify(void);
+
 void Ali_Netlink_AliSendAwssSucNotify(uint32_t evt_type, void *data, int len);
 
 void Ali_Netlink_Awss_Process_Get_Devinfo(uint32_t evt_type, void *data, int len);

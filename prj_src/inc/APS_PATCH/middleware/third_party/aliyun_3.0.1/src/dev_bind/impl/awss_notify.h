@@ -18,12 +18,12 @@ enum {
     AWSS_NOTIFY_TYPE_MAX,
 };
 
-//#ifdef WIFI_PROVISION_ENABLED
+#ifdef WIFI_PROVISION_ENABLED
 int awss_suc_notify(void);
 int awss_devinfo_notify(void);
 int awss_suc_notify_stop(void);
 int awss_devinfo_notify_stop(void);
-//#endif
+#endif
 
 int awss_dev_bind_notify(void);
 int awss_dev_bind_notify_stop(void);

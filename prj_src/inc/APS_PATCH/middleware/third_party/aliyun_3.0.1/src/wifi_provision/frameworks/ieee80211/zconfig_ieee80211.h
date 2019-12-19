@@ -258,7 +258,7 @@ struct ap_info *zconfig_get_apinfo_by_ssid_suffix(uint8_t *ssid_suffix);
 
 /* add channel to scanning channel list */
 int zconfig_add_active_channel(int channel);
-uint8_t zconfig_get_press_status(void);
+uint8_t zconfig_get_press_status();
 
 int ieee80211_hdrlen(uint16_t fc);
 int ieee80211_has_a4(uint16_t fc);

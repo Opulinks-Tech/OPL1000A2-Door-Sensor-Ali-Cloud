@@ -58,7 +58,7 @@ enum _ZC_PKG_TYPE_ {
 };
 
 /*进入monitor模式前后调用该函数 */
-void zconfig_init(void);
+void zconfig_init();
 /* 配网成功后，调用该函数，释放内存资源 */
 void zconfig_destroy(void);
 /*

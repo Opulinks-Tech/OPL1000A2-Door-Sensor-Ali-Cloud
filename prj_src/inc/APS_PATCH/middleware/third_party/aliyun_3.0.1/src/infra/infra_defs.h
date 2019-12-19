@@ -20,6 +20,14 @@ extern "C" {
 #define IOTX_NETWORK_IF_LEN             (160)
 #define IOTX_FIRMWARE_VER_LEN           (32)
 #define IOTX_URI_MAX_LEN                (135)
+#define IOTX_DOMAIN_MAX_LEN             (64)
+#define IOTX_CUSTOMIZE_INFO_LEN         (80)
+
+#define DEV_SIGN_SOURCE_MAXLEN          (200)
+#define DEV_SIGN_HOSTNAME_MAXLEN        (64)
+#define DEV_SIGN_CLIENT_ID_MAXLEN       (200)
+#define DEV_SIGN_USERNAME_MAXLEN        (64)
+#define DEV_SIGN_PASSWORD_MAXLEN        (65)
 
 #ifndef _IN_
     #define _IN_
@@ -323,6 +331,27 @@ typedef enum {
     IOTX_HTTP_REGION_MAX         /* Maximum number of domain */
 } iotx_http_region_types_t;
 
+/**
+ * @brief contains iot_ioctl context
+ *
+ */
+typedef struct {
+    int domain_type;
+    int dynamic_register;
+    char cloud_custom_domain[IOTX_DOMAIN_MAX_LEN + 1];
+    uint16_t mqtt_port_num;
+    char http_custom_domain[IOTX_DOMAIN_MAX_LEN + 1];
+    char mqtt_customzie_info[IOTX_CUSTOMIZE_INFO_LEN + 1];
+} sdk_impl_ctx_t;
+
+typedef struct {
+    char hostname[DEV_SIGN_HOSTNAME_MAXLEN];
+    uint16_t port;
+    char clientid[DEV_SIGN_CLIENT_ID_MAXLEN];
+    char username[DEV_SIGN_USERNAME_MAXLEN];
+    char password[DEV_SIGN_PASSWORD_MAXLEN];
+} iotx_sign_mqtt_t;
+
 #define IOTX_HTTP_DOMAIN_NUMBER (6)
 extern const char *g_infra_http_domain[IOTX_HTTP_DOMAIN_NUMBER];
 
@@ -331,6 +360,4 @@ extern int iotx_facility_json_print(const char *str, int level, ...);
 }
 #endif
 #endif
-
-
 

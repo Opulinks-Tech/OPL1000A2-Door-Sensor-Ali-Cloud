@@ -31,7 +31,9 @@
 #include "ali_hal_decl.h"
 #include "iot_rb_data.h"
 
-#define POST_DATA_AFTER_PROPERTY_SET
+extern uint32_t g_RxTaskDelayTime;
+extern uint8_t g_userNeedReply;
+//extern uint8_t g_noReplyCount;
 
 void *HAL_Malloc(uint32_t size);
 void HAL_Free(void *ptr);

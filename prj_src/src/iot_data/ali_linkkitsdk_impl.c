@@ -19,6 +19,23 @@
 #include "lwip/etharp.h"
 #include "infra_report.h"
 #include "blewifi_wifi_api.h"
+#include "infra_net.h"
+#include "iotx_cm_internal.h"
+#include "iotx_mqtt_client.h"
+
+typedef struct
+{
+    uint8_t u8Used;
+    int iId;
+} T_PostInfo;
+
+T_PostInfo g_tPrevPostInfo = {0};
+
+extern void iotx_mc_set_client_state(iotx_mc_client_t *pClient, iotx_mc_state_t newState);
+
+uint32_t g_RxTaskDelayTime = ALI_IOT_RX_DELAY;
+uint8_t g_userNeedReply = 0;
+//uint8_t g_noReplyCount = 0;
 
 // {"LocalTimer":[  => 15
 // {"PowerSwitch":0,"Timer":"55 17 * * 1,2,3,4,5,6,7","Enable":1,"IsValid":1},  => 75
@@ -54,6 +71,11 @@ static int user_connected_event_handler(void)
     BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_CLOUD_CONN, NULL, 0);
 
     IoT_Ring_Buffer_ResetBuffer();
+	
+	/* Terence, reset status */
+	g_RxTaskDelayTime = ALI_IOT_RX_DELAY;
+	g_userNeedReply = 0;
+//	g_noReplyCount = 0;
 
     return 0;
 }
@@ -69,6 +91,11 @@ static int user_disconnected_event_handler(void)
     BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_CLOUD_DISC, NULL, 0);
 
     IoT_Ring_Buffer_ResetBuffer();
+
+	/* Terence, reset status */
+	g_RxTaskDelayTime = ALI_IOT_RX_DELAY;
+	g_userNeedReply = 0;
+//	g_noReplyCount = 0;
 
     return 0;
 }
@@ -92,9 +119,21 @@ static int user_service_request_event_handler(const int devid, const char *servi
     return 0;
 }
 
+void post_info_clear(void)
+{
+    memset(&g_tPrevPostInfo, 0, sizeof(g_tPrevPostInfo));
+    return;
+}
+
+void post_info_update(int iId, char *sReq, uint32_t u32ReqLen)
+{
+    g_tPrevPostInfo.u8Used = 1;
+    g_tPrevPostInfo.iId = iId;
+    return;
+}
+
 static int user_property_set_event_handler(const int devid, const char *request, const int request_len)
 {
-#ifdef BLEWIFI_ALI_DEV_SCHED
     //IoT_Properity_t IoT_Properity;
     cJSON *request_root = NULL, *item_LedLightSwitch = NULL;
     user_example_ctx_t *user_example_ctx = user_example_get_ctx();
@@ -126,21 +165,20 @@ static int user_property_set_event_handler(const int devid, const char *request,
     
     /* end : Add you code to handle request data */
 
-#ifdef POST_DATA_AFTER_PROPERTY_SET
     int res = IOT_Linkkit_Report(user_example_ctx->master_devid, ITM_MSG_POST_PROPERTY,
                              (unsigned char *)request, request_len);
     EXAMPLE_TRACE("Post Property Message ID: %d", res);
 
-	uint32_t dtimVal = 0;
-	BleWifi_Wifi_GetDTIM(&dtimVal);
-	if ( dtimVal != 0 ) {
-		EXAMPLE_TRACE("[%s %d] BleWifi_Wifi_SetDTIM(0)\n", __func__, __LINE__);
+    if(res >= 0)
+    {
+        EXAMPLE_TRACE("BleWifi_Wifi_SetDTIM(0)\n");
 		BleWifi_Wifi_SetDTIM(0);
-	}
-#endif //#ifdef POST_DATA_AFTER_PROPERTY_SET
+		g_RxTaskDelayTime = 100;
+
+        post_info_update(res, (char *)request, request_len);
+    }
 
     cJSON_Delete(request_root);
-#endif //#ifdef BLEWIFI_ALI_DEV_SCHED
     return 0;
 }
 
@@ -163,14 +201,54 @@ static int user_report_reply_event_handler(const int devid, const int msgid, con
     EXAMPLE_TRACE("Message Post Reply Received, Devid: %d, Message ID: %d, Code: %d, Reply: %.*s", devid, msgid, code,
                   reply_value_len,
                   reply_value);
-#ifdef POST_DATA_AFTER_PROPERTY_SET
-	uint32_t dtimVal = 0;
-	BleWifi_Wifi_GetDTIM(&dtimVal);
-	if ( dtimVal == 0 ) {
-		EXAMPLE_TRACE("[%s %d] BleWifi_Wifi_SetDTIM(%d)\n", __func__, __LINE__, BleWifi_Ctrl_DtimTimeGet());
-		BleWifi_Wifi_SetDTIM(BleWifi_Ctrl_DtimTimeGet());
-	}
-#endif //#ifdef POST_DATA_AFTER_PROPERTY_SET
+
+    if(g_tPrevPostInfo.u8Used)
+    {
+        if(code == 200)
+        {
+            if(msgid == g_tPrevPostInfo.iId)
+            {
+                EXAMPLE_TRACE("msgid[%d] == prev_post_id[%d]\n", msgid, g_tPrevPostInfo.iId);
+
+                post_info_clear();
+    
+                EXAMPLE_TRACE("BleWifi_Wifi_SetDTIM(%d)\n", BleWifi_Ctrl_DtimTimeGet());
+                BleWifi_Wifi_SetDTIM(BleWifi_Ctrl_DtimTimeGet());
+                g_RxTaskDelayTime = ALI_IOT_RX_DELAY;
+            }
+            else
+            {
+                EXAMPLE_TRACE("msgid[%d] != prev_post_id[%d]\n", msgid, g_tPrevPostInfo.iId);
+            }
+        }
+        else
+        {
+            extern iotx_cm_connection_t *_mqtt_conncection;
+
+            EXAMPLE_TRACE("code[%d]: clear rb and trigger cloud reconnection\n", code);
+
+            EXAMPLE_TRACE("BleWifi_Wifi_SetDTIM(0)\n");
+            BleWifi_Wifi_SetDTIM(0);
+            g_RxTaskDelayTime = 100;
+
+            if((_mqtt_conncection) && (_mqtt_conncection->context))
+            {
+                iotx_mc_set_client_state(_mqtt_conncection->context, IOTX_MC_STATE_DISCONNECTED_RECONNECTING);
+            }
+            else
+            {
+                EXAMPLE_TRACE("failed to trigger cloud reconnection\n");
+            }
+
+            IoT_Ring_Buffer_ResetBuffer();
+            post_info_clear();
+        }
+    }
+    else
+    {
+        EXAMPLE_TRACE("no prev_post info\n");
+    }
+
     return 0;
 }
 
@@ -212,6 +290,7 @@ void user_post_property(IoT_Properity_t *ptProp)
     char *ps8Buf = NULL;
     uint32_t u32BufSize = PER_STATUS_PROPERTY_LEN;
     uint32_t u32Offset = 0;
+	//uint32_t dtimVal = 0;
 
     #ifdef BLEWIFI_ALI_DEV_SCHED
     if(ptProp->u8Type == DEV_IND_TYPE_SCHED)
@@ -332,6 +411,15 @@ void user_post_property(IoT_Properity_t *ptProp)
                              (unsigned char *)ps8Buf, u32Offset);
 
     EXAMPLE_TRACE("Post Property Message ID: %d, Len[%d]", res, u32Offset);
+	
+    if(res >= 0)
+    {
+        EXAMPLE_TRACE("BleWifi_Wifi_SetDTIM(0)\n");
+		BleWifi_Wifi_SetDTIM(0);
+		g_RxTaskDelayTime = 100;
+
+        post_info_update(res, ps8Buf, u32Offset);
+    }
 
 PROPERITY_ERR:
     if (ps8Buf) {
@@ -457,7 +545,12 @@ int ali_linkkit_init(user_example_ctx_t *user_example_ctx)
     IOT_Ioctl(IOTX_IOCTL_SET_MQTT_DOMAIN, (void *)CUSTOME_DOMAIN_MQTT);
     IOT_Ioctl(IOTX_IOCTL_SET_HTTP_DOMAIN, (void *)CUSTOME_DOMAIN_HTTP);
 #else
+#ifdef WORLDWIDE_USE
+    int domain_type = IOTX_CLOUD_REGION_SINGAPORE;
+#else
     int domain_type = IOTX_CLOUD_REGION_SHANGHAI;
+#endif    
+    
     IOT_Ioctl(IOTX_IOCTL_SET_DOMAIN, (void *)&domain_type);
 #endif
 					
@@ -488,9 +581,17 @@ void IOT_Linkkit_Tx()
     
     if (IOT_RB_DATA_OK != IoT_Ring_Buffer_CheckEmpty())
     {
+        if(g_tPrevPostInfo.u8Used)
+        {
+            goto done;
+        }
+        
         lwip_one_shot_arp_enable();
         IoT_Ring_Buffer_Pop(&IoT_Properity);  
         user_post_property(&IoT_Properity);
-        IoT_Ring_Buffer_ReadIdxUpdate();
+        //IoT_Ring_Buffer_ReadIdxUpdate();
     }
+
+done:
+    return;
 }

@@ -152,7 +152,7 @@ void blewifi_ctrl_http_ota_task_create(void)
     BleWifiCtrlHttpOtaQueueId = osMessageCreate(&blewifi_queue_def, NULL);
     if(BleWifiCtrlHttpOtaQueueId == NULL)
     {
-		BLEWIFI_ERROR("BLEWIFI: ctrl task create queue fail \r\n");
+		BLEWIFI_ERROR("ota: osMessageCreate fail\n");
     }
 }
 
@@ -165,7 +165,7 @@ int blewifi_ctrl_http_ota_msg_send(int msg_type, uint8_t *data, int data_len)
     pMsg = malloc(sizeof(xBleWifiCtrlHttpOtaMessage_t) + data_len);
     if (pMsg == NULL)
     {
-        BLEWIFI_ERROR("BLEWIFI: ctrl http ota task message allocate fail \r\n");
+        BLEWIFI_ERROR("ota: malloc fail\n");
         goto done;
     }
     
@@ -178,7 +178,7 @@ int blewifi_ctrl_http_ota_msg_send(int msg_type, uint8_t *data, int data_len)
     
     if (osMessagePut(BleWifiCtrlHttpOtaQueueId, (uint32_t)pMsg, osWaitForever) != osOK)
     {
-        BLEWIFI_ERROR("BLEWIFI: ctrl task message send fail \r\n");
+        BLEWIFI_ERROR("ota: osMessagePut fail\n");
         goto done;
     }
     
@@ -211,7 +211,7 @@ static void blewifi_ctrl_ota_sched_timeout_handle(uint32_t evt_type, void *data,
 
     if(*pu32Seq != g_u32OtaSchedTimerSeq)
     {
-        BLEWIFI_ERROR("[%s %d] ignore timer event: seq[%u] and curr[%u] not match\n", __func__, __LINE__, *pu32Seq, g_u32OtaSchedTimerSeq);
+        BLEWIFI_WARN("ota timer id not match\n");
         goto done;
     }
 
@@ -244,7 +244,7 @@ void blewifi_ctrl_ota_sched_init(void)
 
         if(!g_tOtaSchedTimer)
         {
-            BLEWIFI_ERROR("[%s %d] osTimerCreate fail\n", __func__, __LINE__);
+            BLEWIFI_ERROR("ota: osTimerCreate fail\n");
         }
     }
 
@@ -259,7 +259,9 @@ void blewifi_ctrl_ota_sched_start(uint32_t u32Sec)
 
     osTimerStop(g_tOtaSchedTimer);
 
+    #if (SNTP_FUNCTION_EN == 1)
     BleWifi_SntpGet(&tInfo);
+    #endif
 
     if(u32Sec)
     {
@@ -270,6 +272,7 @@ void blewifi_ctrl_ota_sched_start(uint32_t u32Sec)
         u32Time = (tInfo.tm_hour * 3600) + (tInfo.tm_min * 60) + tInfo.tm_sec;
     
         BLEWIFI_WARN("OTA sched time[%02u:%02u:%02u] wday[%u]: seconds_of_today[%u]\n", tInfo.tm_hour, tInfo.tm_min, tInfo.tm_sec, tInfo.tm_wday, u32Time);
+        (void)u32Time;
     
         u32Ms = WIFI_OTA_SCHED_TIME * 60* 1000;
     }

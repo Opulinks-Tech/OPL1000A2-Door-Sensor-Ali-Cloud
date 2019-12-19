@@ -1,4 +1,23 @@
-﻿## Release Version:
+## Release Version:
+
+Reference Package: v1.2.14
+Library : 4132
+
+## Release Date: 2019/12/19
+
+## Function & Feature Update 
+
+1. Sync enhancement of Ali-SDK.
+2. Refine unbinding/rebinding flow with Ali-Cloud.
+3. Refine DTIM-Switch timing.
+4. Enable smart sleep even if device is not bound yet.
+5. Based on A2 SDK MP2.15.
+
+## Bug Fix List 
+
+## Notes List
+
+## Release Version:
 
 Reference Package: v1.2.13
 Library : 4132
@@ -18,7 +37,7 @@ Library : 4132
 
 
 ## Notes List
- 
+
 *****
 ## Release Version:
 

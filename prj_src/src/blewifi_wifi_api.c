@@ -78,7 +78,7 @@ void BleWifi_Wifi_DoConnect(uint8_t *data, int len)
 {
     uint8_t ubAPPAutoConnectGetApNum = 0;
     uint32_t i = 0;
-    wifi_auto_connect_info_t *info = NULL;
+    wifi_auto_connect_info_t info = {0};
     uint8_t ubAPPConnect = 1;
 
     g_ubAppCtrlRequestRetryTimes = 0;
@@ -92,26 +92,17 @@ void BleWifi_Wifi_DoConnect(uint8_t *data, int len)
             wifi_auto_connect_get_ap_num(&ubAPPAutoConnectGetApNum);
             if (ubAPPAutoConnectGetApNum)
             {
-                info = (wifi_auto_connect_info_t *)malloc(sizeof(wifi_auto_connect_info_t));
-                if (!info)
-                {
-                    printf("malloc fail, info is NULL\r\n");
-                    BleWifi_Ble_SendResponse(BLEWIFI_RSP_CONNECT, BLEWIFI_WIFI_CONNECTED_FAIL);
-                    return;
-                }
-
-                memset(info, 0, sizeof(wifi_auto_connect_info_t));
+                memset(&info, 0, sizeof(wifi_auto_connect_info_t));
                 for (i = 0; i < ubAPPAutoConnectGetApNum; i++)
                 {
-                    wifi_auto_connect_get_ap_info(i, info);
-                    if(!MemCmp(wifi_config_req_connect.sta_config.bssid, info->bssid, sizeof(info->bssid)))
+                    wifi_auto_connect_get_ap_info(i, &info);
+                    if(!MemCmp(wifi_config_req_connect.sta_config.bssid, info.bssid, sizeof(info.bssid)))
                     {
                         wifi_connection_connect_from_ac_index(i);
                         ubAPPConnect = 0;
                         return;
                     }
                 }
-                free(info); 
             }   
 
         }

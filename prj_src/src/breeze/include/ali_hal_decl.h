@@ -39,6 +39,7 @@ int HAL_GetDeviceName(char device_name[IOTX_DEVICE_NAME_LEN + 1]);
 int HAL_GetDeviceSecret(char device_secret[IOTX_DEVICE_SECRET_LEN+1]);
 
 uint32_t HAL_GetProductId(void);
+int HAL_SetProductId(uint32_t ulProductId);
 
 
 

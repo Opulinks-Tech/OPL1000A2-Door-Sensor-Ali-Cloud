@@ -9,23 +9,31 @@
 *  permission of Opulinks Technology Ltd. (C) 2018
 ******************************************************************************/
 #include "ali_hal_decl.h"
+#include "wrappers_defs.h"
 #include "mw_fim_default_group21_project.h"
 
 #define __DEMO__
 
-T_MwFim_GP21_AliyunDevice g_AliyunDevice;
+
 
 void Ali_Hal_Devive_init(){
+    T_MwFim_GP21_AliyunDevice AliyunDevice;
 	
     // get the settings of power saving
-    if (MW_FIM_OK != MwFim_FileRead(MW_FIM_IDX_GP21_PROJECT_ALIYUN_DEVICE, 0, MW_FIM_GP21_ALIYUN_DEVICE_SIZE, (uint8_t*)&g_AliyunDevice))
+    if (MW_FIM_OK != MwFim_FileRead(MW_FIM_IDX_GP21_PROJECT_ALIYUN_DEVICE, 0, MW_FIM_GP21_ALIYUN_DEVICE_SIZE, (uint8_t*)&AliyunDevice))
     {
         // if fail, get the default value
-        memcpy(&g_AliyunDevice, &g_tMwFimDefaultGp21AliyunDevice, MW_FIM_GP21_ALIYUN_DEVICE_SIZE);
+        memcpy(&AliyunDevice, &g_tMwFimDefaultGp21AliyunDevice, MW_FIM_GP21_ALIYUN_DEVICE_SIZE);
     }
+    
+    HAL_SetProductKey(AliyunDevice.ubaProductKey);
+    HAL_SetDeviceName(AliyunDevice.ubaDeviceName);
+    HAL_SetDeviceSecret(AliyunDevice.ubaDeviceSecret);
+    HAL_SetProductSecret(AliyunDevice.ubaProductSecret);
+    HAL_SetProductId(AliyunDevice.ulProductId);
 }
 
-
+#if 0
 int HAL_SetProductKey(_IN_ char *product_key)
 {
     int len = strlen(product_key);
@@ -36,7 +44,7 @@ int HAL_SetProductKey(_IN_ char *product_key)
     memset(g_AliyunDevice.ubaProductKey, 0x0, IOTX_PRODUCT_KEY_LEN + 1);
     strncpy(g_AliyunDevice.ubaProductKey, product_key, len);
 		
-    //MwFim_FileWrite(MW_FIM_IDX_GP12_PROJECT_ALIYUN_DEVICE, 0, MW_FIM_GP12_ALIYUN_DEVICE_SIZE, (uint8_t*)&g_AliyunDevice);
+    //MwFim_FileWrite(MW_FIM_IDX_GP21_PROJECT_ALIYUN_DEVICE, 0, MW_FIM_GP21_ALIYUN_DEVICE_SIZE, (uint8_t*)&g_AliyunDevice);
 #endif
     return len;
 }
@@ -51,7 +59,7 @@ int HAL_SetDeviceName(_IN_ char *device_name)
     }
     memset(g_AliyunDevice.ubaDeviceName, 0x0, IOTX_DEVICE_NAME_LEN + 1);
     strncpy(g_AliyunDevice.ubaDeviceName, device_name, len);
-    //MwFim_FileWrite(MW_FIM_IDX_GP12_PROJECT_ALIYUN_DEVICE, 0, MW_FIM_GP12_ALIYUN_DEVICE_SIZE, (uint8_t*)&g_AliyunDevice);
+    //MwFim_FileWrite(MW_FIM_IDX_GP21_PROJECT_ALIYUN_DEVICE, 0, MW_FIM_GP21_ALIYUN_DEVICE_SIZE, (uint8_t*)&g_AliyunDevice);
 #endif
     return len;
 }
@@ -66,7 +74,7 @@ int HAL_SetDeviceSecret(_IN_ char *device_secret)
     }
     memset(g_AliyunDevice.ubaDeviceSecret, 0x0, IOTX_DEVICE_SECRET_LEN + 1);
     strncpy(g_AliyunDevice.ubaDeviceSecret, device_secret, len);
-    //MwFim_FileWrite(MW_FIM_IDX_GP12_PROJECT_ALIYUN_DEVICE, 0, MW_FIM_GP12_ALIYUN_DEVICE_SIZE, (uint8_t*)&g_AliyunDevice);
+    //MwFim_FileWrite(MW_FIM_IDX_GP21_PROJECT_ALIYUN_DEVICE, 0, MW_FIM_GP21_ALIYUN_DEVICE_SIZE, (uint8_t*)&g_AliyunDevice);
 #endif
     return len;
 }
@@ -81,7 +89,7 @@ int HAL_SetProductSecret(_IN_ char *product_secret)
     }
     memset(g_AliyunDevice.ubaProductSecret, 0x0, IOTX_PRODUCT_SECRET_LEN + 1);
     strncpy(g_AliyunDevice.ubaProductSecret, product_secret, len);
-    //MwFim_FileWrite(MW_FIM_IDX_GP12_PROJECT_ALIYUN_DEVICE, 0, MW_FIM_GP12_ALIYUN_DEVICE_SIZE, (uint8_t*)&g_AliyunDevice);
+    //MwFim_FileWrite(MW_FIM_IDX_GP21_PROJECT_ALIYUN_DEVICE, 0, MW_FIM_GP21_ALIYUN_DEVICE_SIZE, (uint8_t*)&g_AliyunDevice);
 #endif
     return len;
 }
@@ -138,3 +146,4 @@ uint32_t HAL_GetProductId()
 {
 	return g_AliyunDevice.ulProductId;
 }
+#endif

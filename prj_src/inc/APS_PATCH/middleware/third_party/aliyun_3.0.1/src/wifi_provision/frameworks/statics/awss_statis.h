@@ -130,13 +130,13 @@ struct awss_statis_t {
 
 int awss_report_statis(const char *module);
 void awss_update_statis(int awss_statis_idx, int type);
-void awss_clear_statis(void);
-void awss_disp_statis(void);
+void awss_clear_statis();
+void awss_disp_statis();
 
 #define AWSS_UPDATE_STATIS(idx, type) awss_update_statis(idx, type)
 #define AWSS_CLEAR_STATIS()           awss_clear_statis()
 #define AWSS_DISP_STATIS()            awss_disp_statis()
-#define AWSS_REPORT_STATIS(m)         awss_disp_statis()
+#define AWSS_REPORT_STATIS(m)         awss_disp_statis(m)
 #else
 #define AWSS_UPDATE_STATIS(idx, type)
 #define AWSS_CLEAR_STATIS()

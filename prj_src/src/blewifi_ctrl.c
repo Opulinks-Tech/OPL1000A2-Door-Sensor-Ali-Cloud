@@ -50,6 +50,7 @@
 #include "sensor_door.h"
 #include "driver_netlink.h"
 #include "lwip/etharp.h"
+#include "mqtt_wrapper.h"
 
 #ifdef ALI_BLE_WIFI_PROVISION
 #include "awss_notify.h"
@@ -156,8 +157,9 @@ static void BleWifi_Ctrl_TaskEvtHandler_OtherOtaOff(uint32_t evt_type, void *dat
 static void BleWifi_Ctrl_TaskEvtHandler_OtherOtaOffFail(uint32_t evt_type, void *data, int len);
 static void BleWifi_Ctrl_TaskEvtHandler_OtherSysTimer(uint32_t evt_type, void *data, int len);
 
-#ifdef BLEWIFI_ALI_DEV_SCHED
 static void BleWifi_Ctrl_TaskEvtHandler_DevStatusSet(uint32_t evt_type, void *data, int len);
+
+#ifdef BLEWIFI_ALI_DEV_SCHED
 static void BleWifi_Ctrl_TaskEvtHandler_DevSchedSet(uint32_t evt_type, void *data, int len);
 static void BleWifi_Ctrl_TaskEvtHandler_DevSchedSetAll(uint32_t evt_type, void *data, int len);
 static void BleWifi_Ctrl_TaskEvtHandler_DevSchedTimeout(uint32_t evt_type, void *data, int len);
@@ -204,8 +206,9 @@ static T_BleWifi_Ctrl_EvtHandlerTbl g_tCtrlEvtHandlerTbl[] =
     {BLEWIFI_CTRL_MSG_OTHER_OTA_OFF_FAIL,               BleWifi_Ctrl_TaskEvtHandler_OtherOtaOffFail},
     {BLEWIFI_CTRL_MSG_OTHER_SYS_TIMER,                  BleWifi_Ctrl_TaskEvtHandler_OtherSysTimer},
 
-#ifdef BLEWIFI_ALI_DEV_SCHED
     {BLEWIFI_CTRL_MSG_DEV_STATUS_SET,                   BleWifi_Ctrl_TaskEvtHandler_DevStatusSet},
+
+#ifdef BLEWIFI_ALI_DEV_SCHED
     {BLEWIFI_CTRL_MSG_DEV_SCHED_SET,                    BleWifi_Ctrl_TaskEvtHandler_DevSchedSet},
     {BLEWIFI_CTRL_MSG_DEV_SCHED_SET_ALL,                BleWifi_Ctrl_TaskEvtHandler_DevSchedSetAll},
     {BLEWIFI_CTRL_MSG_DEV_SCHED_TIMEOUT,                BleWifi_Ctrl_TaskEvtHandler_DevSchedTimeout},
@@ -271,8 +274,6 @@ void linkkit_event_monitor(int event)
         {
             if(true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_PREPARE_ALI_BOOT_RESET))
             {
-                BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_PREPARE_ALI_BOOT_RESET, false);
-
                 BLEWIFI_WARN("[%s %d] IOTX_CONN_CLOUD_SUC: awss_report_reset for ALI_BOOT_RESET\n", __func__, __LINE__);
                 awss_report_reset();
             }
@@ -293,15 +294,25 @@ void linkkit_event_monitor(int event)
 
         case IOTX_RESET:
         {
-            BLEWIFI_WARN("[%s %d] IOTX_RESET done\n", __func__, __LINE__);
+            BLEWIFI_WARN("[%s %d] IOTX_RESET\n", __func__, __LINE__);
 
-            if(true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_WAIT_ALI_RESET))
+            if(true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_PREPARE_ALI_BOOT_RESET))
+            {
+                BLEWIFI_WARN("[%s %d] disable ALI_BOOT_RESET\n", __func__, __LINE__);
+
+                BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_PREPARE_ALI_BOOT_RESET, false);
+            }
+            else if(true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_WAIT_ALI_RESET))
             {
                 BLEWIFI_WARN("[%s %d] disable WAIT_ALI_RESET\n", __func__, __LINE__);
 
                 BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_WAIT_ALI_RESET, false);
             }
             
+            #ifdef ALI_UNBIND_REFINE
+            HAL_SetReportReset(0);
+            BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_UNBIND, true);
+            #endif
             break;
         }
         
@@ -469,7 +480,7 @@ void BleWifi_Ctrl_SysStatusChange(void)
 
         if (MW_FIM_OK != MwFim_FileWrite(MW_FIM_IDX_GP22_PROJECT_BOOT_STATUS, 0, MW_FIM_GP22_BOOT_STATUS_SIZE, (uint8_t *)&g_tBootStatus))
         {
-            BLEWIFI_ERROR("[%s %d] MwFim_FileWrite fail\n", __func__, __LINE__);
+            BLEWIFI_ERROR("SysStatusChange: MwFim_FileWrite fail\n");
         }
         #endif
     }
@@ -513,11 +524,11 @@ int BleWifi_Wifi_Get_BSsid(void)
         BLEWIFI_ERROR("No AP found\r\n");
         goto err;
 	}
-	BLEWIFI_WARN("ap num = %d\n", apCount);
+	BLEWIFI_ERROR("ap num = %d\n", apCount);
 	ap_list = (wifi_scan_info_t *)malloc(sizeof(wifi_scan_info_t) * apCount);
 	
 	if (!ap_list) {
-        BLEWIFI_ERROR("malloc fail, ap_list is NULL\r\n");
+        BLEWIFI_ERROR("Get_BSsid: malloc fail\n");
 		ubAppErr = -1;
 		goto err;
 	}
@@ -554,7 +565,7 @@ void Ali_WiFi_Connect(uint8_t ssid_len, uint8_t bssid_len, uint8_t pwd_len)
 	conn_data = malloc(sizeof(uint8_t)*conn_data_len);
         if(conn_data==NULL)
         {
-             BLEWIFI_ERROR("Ali_WiFi_Connect--malloc failed!\r");
+             BLEWIFI_ERROR("WiFi_Connect: malloc fail\n");
              return;
         }
 	memset(conn_data, 0, sizeof(uint8_t)*conn_data_len);
@@ -716,6 +727,7 @@ static void BleWifi_Ctrl_TaskEvtHandler_WifiDisconnectionInd(uint32_t evt_type, 
     BLEWIFI_INFO("BLEWIFI: MSG BLEWIFI_CTRL_MSG_WIFI_DISCONNECTION_IND \r\n");
     BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_WIFI, false);
     BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_GOT_IP, false);
+    BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_LINK_CONN, false);
 
     BLEWIFI_WARN("[%s %d] BleWifi_Wifi_SetDTIM(0)\n", __func__, __LINE__);
     BleWifi_Wifi_SetDTIM(0);
@@ -853,11 +865,11 @@ static void BleWifi_Ctrl_TaskEvtHandler_AliWifiConnect(uint32_t evt_type, void *
 
     
 #ifdef ALI_OPL_DBG
-    printf("AliWifiConnect::Send apptoken data(%d):", apptoken_len);
+    BLEWIFI_INFO("AliWifiConnect::Send apptoken data(%d):", apptoken_len);
     for(int i=0;i<apptoken_len;i++){						
-        printf("0x%02x ", g_apInfo.apptoken[i]);				
+        BLEWIFI_INFO("0x%02x ", g_apInfo.apptoken[i]);				
     }
-    printf("\r\n");
+    BLEWIFI_INFO("\r\n");
 #endif
 
     awss_set_token(g_apInfo.apptoken);
@@ -905,7 +917,7 @@ static void BleWifi_Ctrl_TaskEvtHandler_OtherSysTimer(uint32_t evt_type, void *d
     BLEWIFI_INFO("BLEWIFI: MSG BLEWIFI_CTRL_MSG_OTHER_SYS_TIMER \r\n");
     BleWifi_Ctrl_SysStatusChange();
 }
-
+#if 0
 static void post_prepare(void)
 {
     BLEWIFI_WARN("[%s %d] BleWifi_Wifi_SetDTIM(0)\n", __func__, __LINE__);
@@ -923,7 +935,7 @@ static void post_prepare(void)
         osTimerStart(g_tAppPostPrepareTimerId, BLE_WIFI_POST_PREPARE_DUR);
     }
 }
-
+#endif
 static void door_status_post(void)
 {
     IoT_Properity_t tProp = {0};
@@ -954,7 +966,7 @@ static void door_status_post(void)
     BLEWIFI_INFO("[%s %d] IoT_Ring_Buffer_Push: Coutact[%u] Battery[%u] RSSI[%d]\n", __func__, __LINE__, 
                  tProp.tDoorStatus.u8ContactState, tProp.tDoorStatus.u8BatteryPercentage, tProp.tDoorStatus.s8Rssi);
 
-    post_prepare();
+//    post_prepare();
 
     if(IoT_Ring_Buffer_Push(&tProp) != IOT_RB_DATA_OK)
     {
@@ -1089,6 +1101,11 @@ static void led_blink_ctrl(void)
     osTimerStart(g_tAppCtrlLedBlinkTimer, g_pu32CurrBlinkDur[g_u8AppLedBlinkOn]);
 }
 
+int BleWifi_Ctrl_DevStatusSet(T_BleWifi_Ctrl_DevStatus *ptStatus)
+{
+    return BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_DEV_STATUS_SET, (uint8_t *)ptStatus, sizeof(T_BleWifi_Ctrl_DevStatus));
+}
+
 #ifdef BLEWIFI_ALI_DEV_SCHED
 static int entry_compare(const void *pEntry1, const void *pEntry2)
 {
@@ -1177,7 +1194,9 @@ void BleWifi_Ctrl_DevSchedStart(void)
 
     osTimerStop(g_tDevSchedTimer);
 
+    #if (SNTP_FUNCTION_EN == 1)
     BleWifi_SntpGet(&tInfo);
+    #endif
 
     u32Time = (tInfo.tm_hour * 3600) + (tInfo.tm_min * 60) + tInfo.tm_sec;
 
@@ -1280,11 +1299,6 @@ void BleWifi_Ctrl_DevSchedInit(void)
     return;
 }
 
-int BleWifi_Ctrl_DevStatusSet(T_BleWifi_Ctrl_DevStatus *ptStatus)
-{
-    return BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_DEV_STATUS_SET, (uint8_t *)ptStatus, sizeof(T_BleWifi_Ctrl_DevStatus));
-}
-
 int BleWifi_Ctrl_DevSchedSet(uint8_t u8Idx, T_MwFim_GP23_Dev_Sched *ptSched)
 {
     int iRet = -1;
@@ -1292,13 +1306,13 @@ int BleWifi_Ctrl_DevSchedSet(uint8_t u8Idx, T_MwFim_GP23_Dev_Sched *ptSched)
 
     if(u8Idx >= MW_FIM_GP23_DEV_SCHED_NUM)
     {
-        BLEWIFI_ERROR("[%s %d] invalid u8Idx[%u]\n", __func__, __LINE__, u8Idx);
+        BLEWIFI_ERROR("DevSchedSet: invalid u8Idx[%u]\n", u8Idx);
         goto done;
     }
 
     if(!ptSched)
     {
-        BLEWIFI_ERROR("[%s %d] ptSched is NULL\n", __func__, __LINE__);
+        BLEWIFI_ERROR("DevSchedSet: ptSched is NULL\n");
         goto done;
     }
 
@@ -1317,7 +1331,7 @@ int BleWifi_Ctrl_DevSchedSetAll(T_BleWifi_Ctrl_DevSchedAll *ptSchedAll)
 
     if(!ptSchedAll)
     {
-        BLEWIFI_ERROR("[%s %d] ptAllSched is NULL\n", __func__, __LINE__);
+        BLEWIFI_ERROR("DevSchedSetAll: ptAllSched is NULL\n");
         goto done;
     }
 
@@ -1487,7 +1501,6 @@ void BleWifi_Ctrl_NetworkingStop(void)
     }
 }
 
-#ifdef BLEWIFI_ALI_DEV_SCHED
 static void BleWifi_Ctrl_TaskEvtHandler_DevStatusSet(uint32_t evt_type, void *data, int len)
 {
     T_BleWifi_Ctrl_DevStatus *ptStatus = NULL;
@@ -1506,6 +1519,7 @@ done:
     return;
 }
 
+#ifdef BLEWIFI_ALI_DEV_SCHED
 static void BleWifi_Ctrl_TaskEvtHandler_DevSchedSet(uint32_t evt_type, void *data, int len)
 {
     T_BleWifi_Ctrl_DevSchedMsg *ptMsg = NULL;
@@ -1515,7 +1529,7 @@ static void BleWifi_Ctrl_TaskEvtHandler_DevSchedSet(uint32_t evt_type, void *dat
 
     if(!data)
     {
-        BLEWIFI_ERROR("[%s %d] data is NULL\n", __func__, __LINE__);
+        BLEWIFI_ERROR("DevSchedSet: data is NULL\n");
         goto done;
     }
 
@@ -1538,7 +1552,7 @@ static void BleWifi_Ctrl_TaskEvtHandler_DevSchedSet(uint32_t evt_type, void *dat
 
     if(MwFim_FileWrite(MW_FIM_IDX_GP23_PROJECT_DEV_SCHED, u8Idx, MW_FIM_GP23_DEV_SCHED_SIZE, (uint8_t *)&(g_taDevSched[u8Idx])) != MW_FIM_OK)
     {
-        BLEWIFI_ERROR("BLEWIFI: MwFim_FileWrite MW_FIM_IDX_GP05_PROJECT_DEV_SCHED fail: idx[%u]\r\n", u8Idx);
+        BLEWIFI_ERROR("DevSchedSet: MwFim_FileWrite fail\n");
     }
 
     dev_sched_sort();
@@ -1558,7 +1572,7 @@ static void BleWifi_Ctrl_TaskEvtHandler_DevSchedSetAll(uint32_t evt_type, void *
 
     if(!data)
     {
-        BLEWIFI_ERROR("[%s %d] data is NULL\n", __func__, __LINE__);
+        BLEWIFI_ERROR("DevSchedSetAll: data is NULL\n");
         goto done;
     }
 
@@ -1578,7 +1592,7 @@ static void BleWifi_Ctrl_TaskEvtHandler_DevSchedSetAll(uint32_t evt_type, void *
 
             if(MwFim_FileWrite(MW_FIM_IDX_GP23_PROJECT_DEV_SCHED, i, u32Size, (uint8_t *)&(g_taDevSched[i])) != MW_FIM_OK)
             {
-                BLEWIFI_ERROR("BLEWIFI: MwFim_FileWrite MW_FIM_IDX_GP05_PROJECT_DEV_SCHED fail: idx[%u]\r\n", i);
+                BLEWIFI_ERROR("DevSchedSetAll: MwFim_FileWrite fail\n");
             }
 
             u8Update = 1;
@@ -1604,7 +1618,7 @@ static void BleWifi_Ctrl_TaskEvtHandler_DevSchedTimeout(uint32_t evt_type, void 
 
     if(*pu32Seq != g_u32DevSchedTimerSeq)
     {
-        BLEWIFI_ERROR("[%s %d] ignore timer event: seq[%u] and curr[%u] not match\n", __func__, __LINE__, *pu32Seq, g_u32DevSchedTimerSeq);
+        BLEWIFI_WARN("sched timer id not match\n");
         goto done;
     }
 
@@ -1625,7 +1639,7 @@ static void BleWifi_Ctrl_TaskEvtHandler_DevSchedTimeout(uint32_t evt_type, void 
 
                 if(MwFim_FileWrite(MW_FIM_IDX_GP23_PROJECT_DEV_SCHED, u8FimIdx, MW_FIM_GP23_DEV_SCHED_SIZE, (uint8_t *)&(g_taDevSched[u8FimIdx])) != MW_FIM_OK)
                 {
-                    BLEWIFI_ERROR("BLEWIFI: MwFim_FileWrite MW_FIM_IDX_GP05_PROJECT_DEV_SCHED fail: idx[%u]\r\n", u8FimIdx);
+                    BLEWIFI_ERROR("DevSchedTimeout: MwFim_FileWrite fail\n");
                 }
                 
                 tProp.u8Type = DEV_IND_TYPE_SCHED;
@@ -1939,7 +1953,10 @@ void Ali_Ctrl_Task(void *args)
     {
         ali_netlink_Task(pArg);
         Iot_Data_RxTask(pArg);
-        //CoAPServer_yield(pArg);
+
+        #ifdef ALI_RHYTHM_SUPPORT
+        CoAPServer_yield(pArg);
+        #endif
     }
 }
 #endif //#ifdef ALI_SINGLE_TASK
@@ -1971,7 +1988,7 @@ int BleWifi_Ctrl_MsgSend(int msg_type, uint8_t *data, int data_len)
 
 	if (NULL == g_tAppCtrlQueueId)
 	{
-        BLEWIFI_ERROR("BLEWIFI: No queue \r\n");
+        BLEWIFI_ERROR("BLEWIFI: queue is null\n");
         return -1;
 	}
 
@@ -1979,7 +1996,7 @@ int BleWifi_Ctrl_MsgSend(int msg_type, uint8_t *data, int data_len)
     pMsg = malloc(sizeof(xBleWifiCtrlMessage_t) + data_len);
     if (pMsg == NULL)
 	{
-        BLEWIFI_ERROR("BLEWIFI: ctrl task pmsg allocate fail \r\n");
+        BLEWIFI_ERROR("BLEWIFI: malloc fail\n");
 	    goto error;
     }
     
@@ -1992,7 +2009,7 @@ int BleWifi_Ctrl_MsgSend(int msg_type, uint8_t *data, int data_len)
 
     if (osMessagePut(g_tAppCtrlQueueId, (uint32_t)pMsg, osWaitForever) != osOK)
     {
-        BLEWIFI_ERROR("BLEWIFI: ctrl task message send fail \r\n");
+        BLEWIFI_ERROR("BLEWIFI: osMessagePut fail\n");
         goto error;
     }
 
@@ -2126,7 +2143,7 @@ void BleWifi_Ctrl_Init(void)
     g_tAppCtrlQueueId = osMessageCreate(&blewifi_queue_def, NULL);
     if(g_tAppCtrlQueueId == NULL)
     {
-        BLEWIFI_ERROR("BLEWIFI: ctrl task create queue fail \r\n");
+        BLEWIFI_ERROR("BLEWIFI: osMessageCreate fail\n");
     }
 
     /* create timer to trig auto connect */
@@ -2134,7 +2151,7 @@ void BleWifi_Ctrl_Init(void)
     g_tAppCtrlAutoConnectTriggerTimer = osTimerCreate(&timer_auto_connect_def, osTimerOnce, NULL);
     if(g_tAppCtrlAutoConnectTriggerTimer == NULL)
     {
-        BLEWIFI_ERROR("BLEWIFI: ctrl task create auto-connection timer fail \r\n");
+        BLEWIFI_ERROR("BLEWIFI: osTimerCreate fail\n");
     }
 
     /* create timer to trig the sys state */
@@ -2142,14 +2159,14 @@ void BleWifi_Ctrl_Init(void)
     g_tAppCtrlSysTimer = osTimerCreate(&timer_sys_def, osTimerOnce, NULL);
     if(g_tAppCtrlSysTimer == NULL)
     {
-        BLEWIFI_ERROR("BLEWIFI: ctrl task create SYS timer fail \r\n");
+        BLEWIFI_ERROR("BLEWIFI: osTimerCreate fail\n");
     }
 
     /* Create the event group */
     g_tAppCtrlEventGroup = xEventGroupCreate();
     if(g_tAppCtrlEventGroup == NULL)
     {
-        BLEWIFI_ERROR("BLEWIFI: ctrl task create event group fail \r\n");
+        BLEWIFI_ERROR("BLEWIFI: xEventGroupCreate fail\n");
     }
 
     #ifdef BLEWIFI_ALI_BOOT_RESET
@@ -2158,6 +2175,10 @@ void BleWifi_Ctrl_Init(void)
         BLEWIFI_WARN("[%s %d] enable PREPARE_ALI_BOOT_RESET\n", __func__, __LINE__);
 
         BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_PREPARE_ALI_BOOT_RESET, true);
+
+        #ifdef ALI_UNBIND_REFINE
+        HAL_SetReportReset(1);
+        #endif
     }
     #endif
 

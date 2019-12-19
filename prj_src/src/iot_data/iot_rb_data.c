@@ -57,6 +57,8 @@ uint8_t IoT_Ring_Buffer_Pop(IoT_Properity_t *ptProperity)
 
 	memcpy(ptProperity, &(g_tRBData.taProperity[g_tRBData.ulReadIdx]), sizeof(IoT_Properity_t));
 	
+    g_tRBData.ulReadIdx = (g_tRBData.ulReadIdx + 1) % IOT_RB_COUNT;
+	
     bRet = IOT_RB_DATA_OK;
 
 done:

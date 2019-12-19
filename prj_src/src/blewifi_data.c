@@ -706,7 +706,7 @@ void BleWifi_Ble_DataRecvHandler(uint8_t *data, int data_len)
         g_rx_packet.aggr_buf = malloc(g_rx_packet.total_len);
 
         if (g_rx_packet.aggr_buf == NULL) {
-           BLEWIFI_ERROR("%s no mem, len %d\n", __func__, g_rx_packet.total_len);
+           BLEWIFI_ERROR("DataSendEncap: malloc fail\n");
            return;
         }
     }
@@ -743,7 +743,7 @@ void BleWifi_Ble_DataSendEncap(uint16_t type_id, uint8_t *data, int total_data_l
     hdr = malloc(sizeof(blewifi_hdr_t) + remain_len);
     if (hdr == NULL)
     {
-        BLEWIFI_ERROR("BLEWIFI: memory alloc fail\r\n");
+        BLEWIFI_ERROR("DataSendEncap: malloc fail\n");
         return;
     }
 

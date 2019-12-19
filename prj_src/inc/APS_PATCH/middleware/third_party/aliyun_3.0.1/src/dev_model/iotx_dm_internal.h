@@ -47,6 +47,8 @@
 #ifdef ALCS_ENABLED
     #include "CoAPExport.h"
     #include "iotx_alcs.h"
+    #include "dm_server_adapter.h"
+    #include "dm_server.h"
 #endif
 
 /* DM Header File */
@@ -67,8 +69,6 @@
 #include "dm_manager.h"
 #include "dm_client_adapter.h"
 #include "dm_client.h"
-#include "dm_server_adapter.h"
-#include "dm_server.h"
 #include "dm_intf.h"
 
 #ifdef INFRA_MEM_STATS
@@ -118,7 +118,7 @@ typedef enum {
 unsigned int add_tail(void);
 int reset_log_poll(void);
 int remove_log_poll(void);
-int push_log(const char *perform_data, int perform_data_size);
+unsigned int push_log(const char *perform_data, int perform_data_size);
 #endif
 
 #endif

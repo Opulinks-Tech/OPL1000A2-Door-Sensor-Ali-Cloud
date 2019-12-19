@@ -17,7 +17,7 @@
 /*
 FIM version
 */
-#define MW_FIM_VER11_PROJECT            0x06    // 0x00 ~ 0xFF
+#define MW_FIM_VER11_PROJECT            0x07    // 0x00 ~ 0xFF
 
 /*
 Smart sleep
@@ -35,12 +35,12 @@ RF Power
 | WIFI High power |  0xF0          | 0xFF           |
 '-----------------'----------------'----------------'
 */
-#define BLEWIFI_COM_RF_POWER_SETTINGS   (0x00)
+#define BLEWIFI_COM_RF_POWER_SETTINGS   (0x20)
 
 /*
 SNTP
 */
-#define SNTP_FUNCTION_EN      (1)                   // SNTP 1: enable / 0: disable
+#define SNTP_FUNCTION_EN      (0)                   // SNTP 1: enable / 0: disable
 #define SNTP_SERVER           "1.cn.pool.ntp.org"   // SNTP Server 
 #define SNTP_PORT_NUM         "123"                 // SNTP port Number
 #define SNTP_TIME_ZONE        (8)                   // Time zone: GMT+8
