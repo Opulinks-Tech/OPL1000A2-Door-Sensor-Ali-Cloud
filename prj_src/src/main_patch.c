@@ -146,11 +146,11 @@ void __Patch_EntryPoint(void)
     // update the switch AT UART / dbg UART function
     at_cmd_switch_uart1_dbguart = Main_AtUartDbgUartSwitch;
     
-    // modify the heap size, from 0x43E500 to 0x44F000
-    g_ucaMemPartAddr = (uint8_t*) 0x43E500;
-    g_ulMemPartTotalSize = 0x10B00;
+    // modify the heap size, from 0x439000 to 0x44F000
+    g_ucaMemPartAddr = (uint8_t*) 0x439000;
+    g_ulMemPartTotalSize = 0x16000;
     
-    Sys_SetUnsuedSramEndBound(0x43E500);
+    Sys_SetUnsuedSramEndBound(0x439000);
 	    
     // application init
     Sys_AppInit = Main_AppInit_patch;

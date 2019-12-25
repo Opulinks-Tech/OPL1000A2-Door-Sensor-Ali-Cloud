@@ -302,12 +302,16 @@ void Iot_Data_RxTask(void *args)
             {
                 IOT_Linkkit_Tx();
 
+            #if 1
+                IOT_Linkkit_Yield(g_RxTaskDelayTime);
+            #else
                 IOT_Linkkit_Yield(USER_EXAMPLE_YIELD_TIMEOUT_MS);
 
                 // rx behavior
                 //osDelay(10000); // if do nothing for rx behavior, the delay must be exist.
                                // if do something for rx behavior, the delay could be removed
 				osDelay(g_RxTaskDelayTime);
+            #endif
             }
             else
             {

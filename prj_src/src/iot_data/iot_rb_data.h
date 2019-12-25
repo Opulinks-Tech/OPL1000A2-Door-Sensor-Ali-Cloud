@@ -19,7 +19,7 @@
 #define IOT_RB_DATA_OK      0
 #define IOT_RB_DATA_FAIL    1
 
-#define IOT_RB_COUNT        (2) //(4)
+#define IOT_RB_COUNT        (32)
 
 #pragma anon_unions
 

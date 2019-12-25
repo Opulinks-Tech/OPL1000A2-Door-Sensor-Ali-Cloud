@@ -235,7 +235,7 @@ static T_BleWifi_Ctrl_EvtHandlerTbl g_tCtrlEvtHandlerTbl[] =
 
 void BleWifi_Ctrl_HttpPostData(void const *argu)
 {
-	door_status_post();
+	door_status_post(DOOR_STATUS_REGULAR);
 }
 
 void BleWifi_Ctrl_SysModeSet(uint8_t mode)
@@ -458,6 +458,7 @@ void BleWifi_Ctrl_SysStatusChange(void)
         /* Power saving settings */
         if (tSysMode.ubSysMode == MW_FIM_SYS_MODE_USER)
         {
+            BLEWIFI_WARN("[%s %d] ps_smart_sleep(%u)\n", __func__, __LINE__, tPowerSaving.ubPowerSaving);
             ps_smart_sleep(tPowerSaving.ubPowerSaving);
             g_u8BleWifiSleep = tPowerSaving.ubPowerSaving;
         }
@@ -936,7 +937,7 @@ static void post_prepare(void)
     }
 }
 #endif
-static void door_status_post(void)
+void door_status_post(uint8_t u8TrigType)
 {
     IoT_Properity_t tProp = {0};
 
@@ -963,8 +964,10 @@ static void door_status_post(void)
     tProp.tDoorStatus.u8EnableRssi = 1;
     tProp.tDoorStatus.s8Rssi = wpa_driver_netlink_get_rssi() + BLE_WIFI_RSSI_OFFSET;
 
-    BLEWIFI_INFO("[%s %d] IoT_Ring_Buffer_Push: Coutact[%u] Battery[%u] RSSI[%d]\n", __func__, __LINE__, 
-                 tProp.tDoorStatus.u8ContactState, tProp.tDoorStatus.u8BatteryPercentage, tProp.tDoorStatus.s8Rssi);
+    tProp.tDoorStatus.u8TrigType = u8TrigType;
+
+    BLEWIFI_INFO("[%s %d] IoT_Ring_Buffer_Push: Coutact[%u] Battery[%u] RSSI[%d] TrigType[&u]\n", __func__, __LINE__, 
+                 tProp.tDoorStatus.u8ContactState, tProp.tDoorStatus.u8BatteryPercentage, tProp.tDoorStatus.s8Rssi, tProp.tDoorStatus.u8TrigType);
 
 //    post_prepare();
 
@@ -979,13 +982,20 @@ done:
 
 static void door_set(uint8_t u8On, uint8_t u8Ind, uint8_t u8Force)
 {
+    uint8_t u8Type = DOOR_STATUS_CHANGED;
+
+    if(u8Force)
+    {
+        u8Type = DOOR_STATUS_ONLINE;
+    }
+
     if((u8Force) || (u8On != g_u8DoorContactStatus))
     {
         g_u8DoorContactStatus = u8On;
 
         if(u8Ind)
         {
-            door_status_post();
+            door_status_post(u8Type);
         }
     }
     else
@@ -1345,7 +1355,7 @@ done:
 void BleWifi_Ctrl_ButtonReleaseHandle(uint8_t u8ReleaseCount)
 {
 #if 1
-    door_status_post();
+    door_status_post(DOOR_STATUS_BUTTON_PRESSED);
 
     if(u8ReleaseCount == 1)
     {

@@ -1,5 +1,23 @@
 ## Release Version:
 
+Reference Package: v1.2.15
+Library : 4132
+
+## Release Date: 2019/12/25
+
+## Function & Feature Update 
+
+1. For power saving, set BLE ADV interval to 30 minutes if device is not in binding state..
+2. Set select timeout of Ali-SDK RX to 1 second.
+3. Disable CoAP server thoroughly.
+4. Based on A2 SDK MP2.15.
+
+## Bug Fix List 
+
+## Notes List
+
+## Release Version:
+
 Reference Package: v1.2.14
 Library : 4132
 

@@ -17,7 +17,7 @@
 /*
 FIM version
 */
-#define MW_FIM_VER11_PROJECT            0x07    // 0x00 ~ 0xFF
+#define MW_FIM_VER11_PROJECT            0x08    // 0x00 ~ 0xFF
 
 /*
 Smart sleep
@@ -109,9 +109,10 @@ method 2: full name
 
 /* For power saving
 10000 (ms) / 0.625 (ms) = 16000 = 0x3E80
+0xFFFF is deifined as 30 min in driver
 */
-#define BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_PS_MIN   0x3E80  // 10 sec
-#define BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_PS_MAX   0x3E80  // 10 sec
+#define BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_PS_MIN   0xFFFF  // 30 min
+#define BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_PS_MAX   0xFFFF  // 30 min
 
 
 // Wifi part

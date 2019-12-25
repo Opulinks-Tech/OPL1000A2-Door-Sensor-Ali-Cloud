@@ -88,7 +88,8 @@ typedef unsigned char uint8_t;
 
 #define ALI_KEEPALIVE_INTERVAL      (120000) // ms
 
-#define ALI_IOT_RX_DELAY            (2000) // ms
+#define ALI_IOT_RX_DELAY_MAX        (1000) // ms
+#define ALI_IOT_RX_DELAY_MIN        (100) // ms
 
 #ifdef WORLDWIDE_USE
 #define ALI_UNBIND_REFINE

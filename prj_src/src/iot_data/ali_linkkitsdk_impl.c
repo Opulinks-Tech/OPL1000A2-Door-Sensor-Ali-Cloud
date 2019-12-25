@@ -22,6 +22,11 @@
 #include "infra_net.h"
 #include "iotx_cm_internal.h"
 #include "iotx_mqtt_client.h"
+#include "util_func.h"
+
+#if (SNTP_FUNCTION_EN == 1)
+#include "blewifi_common.h"
+#endif
 
 typedef struct
 {
@@ -33,9 +38,10 @@ T_PostInfo g_tPrevPostInfo = {0};
 
 extern void iotx_mc_set_client_state(iotx_mc_client_t *pClient, iotx_mc_state_t newState);
 
-uint32_t g_RxTaskDelayTime = ALI_IOT_RX_DELAY;
+uint32_t g_RxTaskDelayTime = ALI_IOT_RX_DELAY_MAX;
 uint8_t g_userNeedReply = 0;
 //uint8_t g_noReplyCount = 0;
+uint32_t g_u32PrevTimeStamp = 0;
 
 // {"LocalTimer":[  => 15
 // {"PowerSwitch":0,"Timer":"55 17 * * 1,2,3,4,5,6,7","Enable":1,"IsValid":1},  => 75
@@ -57,6 +63,13 @@ user_example_ctx_t *user_example_get_ctx(void)
     return &g_user_example_ctx;
 }
 
+void post_timing_update(uint32_t u32Dtim, uint32_t u32Delay)
+{
+    EXAMPLE_TRACE("BleWifi_Wifi_SetDTIM(%u), iot_rx_delay(%u)\n", u32Dtim, u32Delay);
+    BleWifi_Wifi_SetDTIM(u32Dtim);
+    g_RxTaskDelayTime = u32Delay;
+    return;
+}
 
 static int user_connected_event_handler(void)
 {
@@ -73,7 +86,7 @@ static int user_connected_event_handler(void)
     IoT_Ring_Buffer_ResetBuffer();
 	
 	/* Terence, reset status */
-	g_RxTaskDelayTime = ALI_IOT_RX_DELAY;
+	g_RxTaskDelayTime = ALI_IOT_RX_DELAY_MAX;
 	g_userNeedReply = 0;
 //	g_noReplyCount = 0;
 
@@ -93,7 +106,7 @@ static int user_disconnected_event_handler(void)
     IoT_Ring_Buffer_ResetBuffer();
 
 	/* Terence, reset status */
-	g_RxTaskDelayTime = ALI_IOT_RX_DELAY;
+	g_RxTaskDelayTime = ALI_IOT_RX_DELAY_MAX;
 	g_userNeedReply = 0;
 //	g_noReplyCount = 0;
 
@@ -171,10 +184,7 @@ static int user_property_set_event_handler(const int devid, const char *request,
 
     if(res >= 0)
     {
-        EXAMPLE_TRACE("BleWifi_Wifi_SetDTIM(0)\n");
-		BleWifi_Wifi_SetDTIM(0);
-		g_RxTaskDelayTime = 100;
-
+        post_timing_update(0, ALI_IOT_RX_DELAY_MIN);
         post_info_update(res, (char *)request, request_len);
     }
 
@@ -212,9 +222,8 @@ static int user_report_reply_event_handler(const int devid, const int msgid, con
 
                 post_info_clear();
     
-                EXAMPLE_TRACE("BleWifi_Wifi_SetDTIM(%d)\n", BleWifi_Ctrl_DtimTimeGet());
-                BleWifi_Wifi_SetDTIM(BleWifi_Ctrl_DtimTimeGet());
-                g_RxTaskDelayTime = ALI_IOT_RX_DELAY;
+                //post_timing_update(BleWifi_Ctrl_DtimTimeGet(), ALI_IOT_RX_DELAY_MAX);
+                post_timing_update(2000, ALI_IOT_RX_DELAY_MAX);
             }
             else
             {
@@ -227,9 +236,7 @@ static int user_report_reply_event_handler(const int devid, const int msgid, con
 
             EXAMPLE_TRACE("code[%d]: clear rb and trigger cloud reconnection\n", code);
 
-            EXAMPLE_TRACE("BleWifi_Wifi_SetDTIM(0)\n");
-            BleWifi_Wifi_SetDTIM(0);
-            g_RxTaskDelayTime = 100;
+            post_timing_update(0, ALI_IOT_RX_DELAY_MIN);
 
             if((_mqtt_conncection) && (_mqtt_conncection->context))
             {
@@ -240,6 +247,7 @@ static int user_report_reply_event_handler(const int devid, const int msgid, con
                 EXAMPLE_TRACE("failed to trigger cloud reconnection\n");
             }
 
+            BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_CLOUD_DISC, NULL, 0);
             IoT_Ring_Buffer_ResetBuffer();
             post_info_clear();
         }
@@ -311,6 +319,72 @@ void user_post_property(IoT_Properity_t *ptProp)
 
         u32Offset += snprintf(ps8Buf + u32Offset, u32BufSize - u32Offset, "{");
 
+    #if 1 // timestamp
+        uint32_t u32TimeStamp = 0;
+
+        #if (SNTP_FUNCTION_EN == 1)
+        u32TimeStamp = BleWifi_SntpGetRawData();
+        #else
+        util_get_current_time(&u32TimeStamp, NULL);
+
+        if(u32TimeStamp <= g_u32PrevTimeStamp)
+        {
+            u32TimeStamp = g_u32PrevTimeStamp + 1;
+        }
+
+        g_u32PrevTimeStamp = u32TimeStamp;
+        #endif
+
+        if(ptProp->tDoorStatus.u8EnableContact)
+        {
+            u8FirstItemDone = 1;
+            u32Offset += snprintf(ps8Buf + u32Offset, u32BufSize - u32Offset, "\"ContactState\":{\"value\":%u,\"time\":%u}", 
+                                  ptProp->tDoorStatus.u8ContactState, u32TimeStamp);
+        }
+
+        if(ptProp->tDoorStatus.u8EnableBattery)
+        {
+            if(u8FirstItemDone)
+            {
+                u32Offset += snprintf(ps8Buf + u32Offset, u32BufSize - u32Offset, ",");
+            }
+            else
+            {
+                u8FirstItemDone = 1;
+            }
+
+            u32Offset += snprintf(ps8Buf + u32Offset, u32BufSize - u32Offset, "\"BatteryPercentage\":{\"value\":%u,\"time\":%u}", 
+                                  ptProp->tDoorStatus.u8BatteryPercentage, u32TimeStamp);
+            u8FirstItemDone = 1;
+        }
+
+        if(ptProp->tDoorStatus.u8EnableRssi)
+        {
+            if(u8FirstItemDone)
+            {
+                u32Offset += snprintf(ps8Buf + u32Offset, u32BufSize - u32Offset, ",");
+            }
+            else
+            {
+                u8FirstItemDone = 1;
+            }
+
+            u32Offset += snprintf(ps8Buf + u32Offset, u32BufSize - u32Offset, "\"RSSI\":{\"value\":%d,\"time\":%u}", 
+                                  ptProp->tDoorStatus.s8Rssi, u32TimeStamp);
+        }
+
+        if(u8FirstItemDone)
+        {
+            u32Offset += snprintf(ps8Buf + u32Offset, u32BufSize - u32Offset, ",");
+        }
+        else
+        {
+            u8FirstItemDone = 1;
+        }
+
+        u32Offset += snprintf(ps8Buf + u32Offset, u32BufSize - u32Offset, "\"TrigType\":{\"value\":%d,\"time\":%u}", 
+                              ptProp->tDoorStatus.u8TrigType, u32TimeStamp);
+    #else
         if(ptProp->tDoorStatus.u8EnableContact)
         {
             u8FirstItemDone = 1;
@@ -345,6 +419,7 @@ void user_post_property(IoT_Properity_t *ptProp)
 
             u32Offset += snprintf(ps8Buf + u32Offset, u32BufSize - u32Offset, "\"RSSI\":%d", ptProp->tDoorStatus.s8Rssi);
         }
+    #endif
 
         u32Offset += snprintf(ps8Buf + u32Offset, u32BufSize - u32Offset, "}");
     }
@@ -414,10 +489,7 @@ void user_post_property(IoT_Properity_t *ptProp)
 	
     if(res >= 0)
     {
-        EXAMPLE_TRACE("BleWifi_Wifi_SetDTIM(0)\n");
-		BleWifi_Wifi_SetDTIM(0);
-		g_RxTaskDelayTime = 100;
-
+        post_timing_update(0, ALI_IOT_RX_DELAY_MIN);
         post_info_update(res, ps8Buf, u32Offset);
     }
 

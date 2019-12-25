@@ -151,6 +151,8 @@ typedef struct
 
     uint8_t u8EnableRssi;
     int8_t s8Rssi;
+
+    uint8_t u8TrigType;
 } T_BleWifi_Ctrl_DoorStatus;
 
 typedef struct
@@ -196,6 +198,17 @@ typedef enum
     DEV_IND_TYPE_MAX
 } T_DevIndType;
 
+typedef enum
+{
+    DOOR_STATUS_RESERVED = 0,
+    DOOR_STATUS_CHANGED,
+    DOOR_STATUS_ONLINE,
+    DOOR_STATUS_BUTTON_PRESSED,
+    DOOR_STATUS_REGULAR,
+
+    DOOR_STATUS_MAX,
+} T_DoorStatusType;
+
 #define DEV_SCHED_REPEAT_MASK(repeat)       (1 << repeat)
 
 #define BLEWIFI_CTRL_AUTO_CONN_STATE_IDLE   (g_tAppCtrlWifiConnectSettings.ubConnectRetry + 1)
@@ -226,7 +239,7 @@ void BleWifi_Ctrl_NetworkingStop(void);
 
 void BleWifi_Ctrl_BootCntUpdate(void);
 
-static void door_status_post(void);
+void door_status_post(uint8_t u8TrigType);
 
 #endif /* __BLEWIFI_CTRL_H__ */
 

@@ -11,7 +11,7 @@
 #define SVN_DATE                "2019/11/26 17:04:53"
 
 // Current system date & time
-#define SVN_TIME_NOW            "2019/11/29 12:08:17"
+#define SVN_TIME_NOW            "2019/11/26 17:41:16"
 
 // Repository URL of the working copy
 #define SVN_URL                 "svn://190.168.1.109/repos/SL1000_repo/Tag_Release/OPL1000_A2_SDK/OPL1000_003_002_015/OPL1000_A2_ROM_r4132"
