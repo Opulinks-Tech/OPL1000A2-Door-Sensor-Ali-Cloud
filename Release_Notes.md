@@ -1,5 +1,22 @@
 ## Release Version:
 
+Reference Package: v1.2.16
+Library : 4208
+
+## Release Date: 2020/02/20
+
+## Function & Feature Update 
+
+1. Modify RX delay time from 1s to 2s.
+2. Update m0 file with disable TCA.
+3. Based on A2 SDK MP2.16.
+
+## Bug Fix List 
+
+## Notes List
+
+## Release Version:
+
 Reference Package: v1.2.15
 Library : 4132
 
