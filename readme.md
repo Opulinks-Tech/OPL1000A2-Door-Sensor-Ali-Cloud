@@ -14,7 +14,7 @@
 
 **prj_src** 
 
-- 包含该工程的源文件, 包括头文件，库文件和工程文件等。
+- 包含SDK库在内的该工程的所有源文件, 包括头文件，库文件和工程文件（APS_PATCH\examples\system\ali_blewifi）等。
 
 **Doc** 
 
