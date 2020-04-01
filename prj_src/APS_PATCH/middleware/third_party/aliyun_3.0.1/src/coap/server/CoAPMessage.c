@@ -15,7 +15,6 @@
 #include "CoAPPlatform.h"
 #include "CoAPInternal.h"
 #include "iotx_coap_internal.h"
-#include "infra_config.h"
 
 #define COAPAckMsg(header) \
     ((header.code == COAP_MSG_CODE_EMPTY_MESSAGE) \

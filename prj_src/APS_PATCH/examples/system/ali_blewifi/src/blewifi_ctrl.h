@@ -24,12 +24,11 @@
 #include <stdbool.h>
 #include "blewifi_configuration.h"
 #include "mw_fim_default_group11_project.h"
-#include "mw_fim_default_group23_project.h"
+#include "mw_fim_default_group12_project.h"
 
 #define BLEWIFI_CTRL_QUEUE_SIZE         (20)
 
-//#define BLEWIFI_ALI_BOOT_RESET
-//#define BLEWIFI_ALI_DEV_SCHED
+#define AverageTimes              (100)
 
 typedef enum blewifi_ctrl_msg_type
 {
@@ -62,17 +61,15 @@ typedef enum blewifi_ctrl_msg_type
     BLEWIFI_CTRL_MSG_OTHER_OTA_ON = 0x100,      //OTA
     BLEWIFI_CTRL_MSG_OTHER_OTA_OFF,             //OTA success
     BLEWIFI_CTRL_MSG_OTHER_OTA_OFF_FAIL,        //OTA fail
+
+    BLEWIFI_CTRL_MSG_OTHER_LED_TIMER,
     BLEWIFI_CTRL_MSG_OTHER_SYS_TIMER,           //SYS timer
     
     BLEWIFI_CTRL_MSG_DEV_STATUS_SET,                //Set Device Status
-    BLEWIFI_CTRL_MSG_DEV_SCHED_SET,                 //Set Device Schedule
-    BLEWIFI_CTRL_MSG_DEV_SCHED_SET_ALL,             //Set All Device Schedules
-    BLEWIFI_CTRL_MSG_DEV_SCHED_TIMEOUT,             //Device Schedule Time Out
     BLEWIFI_CTRL_MSG_BUTTON_STATE_CHANGE,           //Button Stage Change
     BLEWIFI_CTRL_MSG_BUTTON_DEBOUNCE_TIMEOUT,       //Button Debounce Time Out
     BLEWIFI_CTRL_MSG_BUTTON_RELEASE_TIMEOUT,        //Button Release Time Out
     BLEWIFI_CTRL_MSG_BUTTON_BLE_ADV_TIMEOUT,        //Button press more then 5 second, then timer start to count down. If time out then ble adv stop.
-    BLEWIFI_CTRL_MSG_LED_BLINK_TIMEOUT,             //LED Blink Time Out
     BLEWIFI_CTRL_MSG_NETWORKING_START,              //Networking Start
     BLEWIFI_CTRL_MSG_NETWORKING_STOP,               //Networking Stop
 
@@ -83,7 +80,10 @@ typedef enum blewifi_ctrl_msg_type
     BLEWIFI_CTRL_MSG_POST_REPLY,                    //Post Reply
     BLEWIFI_CTRL_MSG_DOOR_STATECHANGE,              //Door State Change
     BLEWIFI_CTRL_MSG_DOOR_DEBOUNCETIMEOUT,          //Door Debounce Time Out
-    
+
+    BLEWIFI_CTRL_MSG_SNTP_START,                    //SNTP Start
+    BLEWIFI_CTRL_MSG_SNTP_TIMEOUT,                  //SNTP Time Out
+
     BLEWIFI_CTRL_MSG_OTHER__NUM
 } blewifi_ctrl_msg_type_e;
 
@@ -93,6 +93,19 @@ typedef struct
     uint32_t length;
     uint8_t ucaMessage[];
 } xBleWifiCtrlMessage_t;
+
+typedef enum blewifi_ctrl_led_state
+{
+    BLEWIFI_CTRL_LED_BLEADV_ON_1 = 0x00,
+    BLEWIFI_CTRL_LED_BLEADV_OFF_1,
+    
+    BLEWIFI_CTRL_LED_AUTOCONN_ON_1,
+    BLEWIFI_CTRL_LED_AUTOCONN_OFF_1,
+
+    BLEWIFI_CTRL_LED_ALWAYS_OFF,
+
+    BLEWIFI_CTRL_LED_NUM
+} blewifi_ctrl_led_state_e;
 
 typedef enum blewifi_ctrl_sys_state
 {
@@ -114,18 +127,19 @@ typedef enum blewifi_ctrl_sys_state
 #define BLEWIFI_CTRL_EVENT_BIT_NETWORK  0x00000020U
 
 #ifdef ALI_BLE_WIFI_PROVISION
-#define BLEWIFI_CTRL_EVENT_BIT_UNBIND       0x00001000U
-#define BLEWIFI_CTRL_EVENT_BIT_LINK_CONN    0x00002000U
-#define BLEWIFI_CTRL_EVENT_BIT_ALI_STOP_BLE 0x00004000U
-#define BLEWIFI_CTRL_EVENT_BIT_ALI_WIFI_PRO 0x00008000U     // from connection to got ip
-#define BLEWIFI_CTRL_EVENT_BIT_ALI_WIFI_PRO_1   0x00010000U // from scan to got ip
-#define BLEWIFI_CTRL_EVENT_BIT_PREPARE_ALI_RESET    0x00020000U
-#define BLEWIFI_CTRL_EVENT_BIT_WAIT_ALI_RESET       0x00040000U
+#define BLEWIFI_CTRL_EVENT_BIT_UNBIND                   0x00001000U
+#define BLEWIFI_CTRL_EVENT_BIT_LINK_CONN                0x00002000U
+#define BLEWIFI_CTRL_EVENT_BIT_ALI_STOP_BLE             0x00004000U
+#define BLEWIFI_CTRL_EVENT_BIT_ALI_WIFI_PRO             0x00008000U     // from connection to got ip
+#define BLEWIFI_CTRL_EVENT_BIT_ALI_WIFI_PRO_1           0x00010000U // from scan to got ip
+#define BLEWIFI_CTRL_EVENT_BIT_PREPARE_ALI_RESET        0x00020000U
+#define BLEWIFI_CTRL_EVENT_BIT_WAIT_ALI_RESET           0x00040000U
 #define BLEWIFI_CTRL_EVENT_BIT_PREPARE_ALI_BOOT_RESET   0x00080000U
 #endif
 
-#define BLEWIFI_CTRL_EVENT_BIT_DOOR         0x00100000U  // Door (Key) Status
-#define BLEWIFI_CTRL_EVENT_BIT_CLOUD_CONN   0x00200000U  // Cloud connected
+#define BLEWIFI_CTRL_EVENT_BIT_DOOR             0x00100000U  // Door (Key) Status
+#define BLEWIFI_CTRL_EVENT_BIT_CLOUD_CONN       0x00200000U  // Cloud connected
+#define BLEWIFI_CTRL_EVENT_BIT_WIFI_AUTOCONN    0x00400000U  // Do Auto WiFi Connect
 
 typedef void (*T_BleWifi_Ctrl_EvtHandler_Fp)(uint32_t evt_type, void *data, int len);
 typedef struct
@@ -138,7 +152,6 @@ typedef struct
 {
     uint8_t u8DevOn;
     uint8_t u8LedOn;
-    uint8_t u8DevLedSync;
 } T_BleWifi_Ctrl_DevStatus;
 
 typedef struct
@@ -147,7 +160,8 @@ typedef struct
     uint8_t u8ContactState;
 
     uint8_t u8EnableBattery;
-    uint8_t u8BatteryPercentage;
+    float   fBatteryVoltage;
+    float   fBatteryVoltagePercentage;
 
     uint8_t u8EnableRssi;
     int8_t s8Rssi;
@@ -155,43 +169,9 @@ typedef struct
     uint8_t u8TrigType;
 } T_BleWifi_Ctrl_DoorStatus;
 
-typedef struct
-{
-    uint8_t u8Idx;
-    T_MwFim_GP23_Dev_Sched tSched;
-} T_BleWifi_Ctrl_DevSchedMsg;
-
-typedef struct
-{
-    uint8_t u8Num;
-    T_MwFim_GP23_Dev_Sched taSched[MW_FIM_GP23_DEV_SCHED_NUM];
-} T_BleWifi_Ctrl_DevSchedAll;
-
-typedef struct
-{
-    uint8_t u8Idx;
-    T_MwFim_GP23_Dev_Sched *ptSched;
-} T_BleWifi_Ctrl_SortDevSched;
-
-typedef enum
-{
-    DEV_SCHED_REPEAT_UNUSED = 0,
-
-    DEV_SCHED_REPEAT_MON,
-    DEV_SCHED_REPEAT_TUE,
-    DEV_SCHED_REPEAT_WED,
-    DEV_SCHED_REPEAT_THU,
-    DEV_SCHED_REPEAT_FRI,
-    DEV_SCHED_REPEAT_SAT,
-    DEV_SCHED_REPEAT_SUN,
-
-    DEV_SCHED_REPEAT_MAX
-} T_DevSchedRepeat;
-
 typedef enum
 {
     DEV_IND_TYPE_STATUS = 0,
-    DEV_IND_TYPE_SCHED,
 
     DEV_IND_TYPE_DOOR_STATUS,
 
@@ -209,12 +189,11 @@ typedef enum
     DOOR_STATUS_MAX,
 } T_DoorStatusType;
 
-#define DEV_SCHED_REPEAT_MASK(repeat)       (1 << repeat)
-
 #define BLEWIFI_CTRL_AUTO_CONN_STATE_IDLE   (g_tAppCtrlWifiConnectSettings.ubConnectRetry + 1)
 #define BLEWIFI_CTRL_AUTO_CONN_STATE_SCAN   (BLEWIFI_CTRL_AUTO_CONN_STATE_IDLE + 1)
 
 extern T_MwFim_GP11_WifiConnectSettings g_tAppCtrlWifiConnectSettings;
+extern T_MwFim_GP12_DCSlope g_tDCSlope;
 
 void BleWifi_Ctrl_SysModeSet(uint8_t mode);
 uint8_t BleWifi_Ctrl_SysModeGet(void);
@@ -227,9 +206,6 @@ int BleWifi_Ctrl_MsgSend(int msg_type, uint8_t *data, int data_len);
 void BleWifi_Ctrl_Init(void);
 
 int BleWifi_Ctrl_DevStatusSet(T_BleWifi_Ctrl_DevStatus *ptStatus);
-int BleWifi_Ctrl_DevSchedSet(uint8_t u8Idx, T_MwFim_GP23_Dev_Sched *ptDevSched);
-int BleWifi_Ctrl_DevSchedSetAll(T_BleWifi_Ctrl_DevSchedAll *ptSchedAll);
-void BleWifi_Ctrl_DevSchedInit(void);
 void BleWifi_Ctrl_DoorInit(void);
 
 void BleWifi_Ctrl_ButtonReleaseHandle(uint8_t u8ReleaseCount);
@@ -240,6 +216,6 @@ void BleWifi_Ctrl_NetworkingStop(void);
 void BleWifi_Ctrl_BootCntUpdate(void);
 
 void door_status_post(uint8_t u8TrigType);
-
+void UpdateBatteryContent(void);
 #endif /* __BLEWIFI_CTRL_H__ */
 

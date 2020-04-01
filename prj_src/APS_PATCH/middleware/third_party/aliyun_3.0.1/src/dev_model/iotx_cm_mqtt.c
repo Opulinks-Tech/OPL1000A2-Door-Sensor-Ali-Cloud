@@ -2,7 +2,8 @@
 
 #if defined(MQTT_COMM_ENABLED) || defined(MAL_ENABLED)
 
-/*static */iotx_cm_connection_t *_mqtt_conncection = NULL;
+//static iotx_cm_connection_t *_mqtt_conncection = NULL;
+iotx_cm_connection_t *_mqtt_conncection = NULL;
 static void iotx_cloud_conn_mqtt_event_handle(void *pcontext, void *pclient, iotx_mqtt_event_msg_pt msg);
 static int  _mqtt_connect(uint32_t timeout);
 static int _mqtt_publish(iotx_cm_ext_params_t *params, const char *topic, const char *payload,

@@ -1,15 +1,16 @@
 #include "iotx_dm_internal.h"
+#include "infra_config.h"
 
 #ifdef ALCS_ENABLED
 
-static dm_server_ctx_t g_dm_server_ctx = {0};
+SHM_DATA static dm_server_ctx_t g_dm_server_ctx = {0};
 
-static dm_server_ctx_t *dm_server_get_ctx(void)
+SHM_DATA static dm_server_ctx_t *dm_server_get_ctx(void)
 {
     return &g_dm_server_ctx;
 }
 
-int dm_server_open(void)
+SHM_DATA int dm_server_open(void)
 {
     dm_server_ctx_t *ctx = dm_server_get_ctx();
     iotx_alcs_param_t alcs_param;
@@ -38,7 +39,7 @@ int dm_server_open(void)
     return SUCCESS_RETURN;
 }
 
-int dm_server_connect(void)
+SHM_DATA int dm_server_connect(void)
 {
 
     dm_server_ctx_t *ctx = dm_server_get_ctx();
@@ -46,7 +47,7 @@ int dm_server_connect(void)
     return iotx_alcs_cloud_init(ctx->conn_handle);
 }
 
-int dm_server_close(void)
+SHM_DATA int dm_server_close(void)
 {
     dm_server_ctx_t *ctx = dm_server_get_ctx();
 

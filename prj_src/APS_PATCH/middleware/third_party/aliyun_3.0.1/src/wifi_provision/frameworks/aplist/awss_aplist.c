@@ -25,9 +25,9 @@ static void awss_clr_aplist_monitor()
 
     if(clr_aplist_timer)
     {
-        HAL_Timer_Stop(clr_aplist_timer);
-        HAL_Timer_Start(clr_aplist_timer, CLR_APLIST_MONITOR_TIMEOUT_MS);
-    }
+    HAL_Timer_Stop(clr_aplist_timer);
+    HAL_Timer_Start(clr_aplist_timer, CLR_APLIST_MONITOR_TIMEOUT_MS);
+}
     else
     {
         timer_dbg("[%s %d] clr_aplist_timer is null\n", __func__, __LINE__);

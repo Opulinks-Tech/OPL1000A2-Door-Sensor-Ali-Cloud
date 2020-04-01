@@ -29,6 +29,91 @@
 #include "awss_dev_reset.h"
 #include "mqtt_wrapper.h"
 
+#ifdef ALI_TIMESTAMP
+volatile uint32_t g_u32TsPrevSync = 0;
+volatile uint32_t g_u32TsNextSyncTime = 0;
+
+extern void user_timestamp_query(void);
+
+void Iot_NextSyncTimeSet(void)
+{
+    uint32_t u32Time = BleWifi_SntpGetRawData(0);
+    uint32_t u32Target = 20;
+    uint32_t u32Remainder = 0;
+
+    u32Remainder = u32Time % 60;
+
+    if(u32Remainder >= u32Target)
+    {
+        u32Time += ((60 - u32Remainder) + u32Target);
+    }
+    else
+    {
+        u32Time += (u32Target - u32Remainder);
+    }
+
+    g_u32TsNextSyncTime = u32Time + 120;
+        
+    return;
+}
+
+void Iot_TimestampProc(void)
+{
+    uint32_t u32Curr = 0;
+    uint8_t u8Run = 0;
+
+    u32Curr = BleWifi_SntpGetRawData(0);
+
+    if(g_u32TsPrevSync)
+    {
+        uint8_t u8RetryCheck = 0;
+        uint32_t u32Remainder = u32Curr % 60;
+
+        if(g_u32TsNextSyncTime)
+        {
+            if(g_u32TsPrevSync < g_u32TsNextSyncTime)
+            {
+                if((u32Curr >= g_u32TsNextSyncTime) && (u32Remainder >= 10) && (u32Remainder <= 30))
+                {
+                    u8Run = 1;
+                }
+            }
+            else
+            {
+                u8RetryCheck = 1;
+            }
+        }
+        else
+        {
+            // no rsp for first sync
+            u8RetryCheck = 1;
+        }
+
+        if(u8RetryCheck)
+        {
+            if((u32Curr >= (g_u32TsPrevSync + 30)) && (u32Remainder >= 10) && (u32Remainder <= 30))
+            {
+                u8Run = 1;
+            }
+        }
+    }
+    else
+    {
+        // first sync
+        u8Run = 1;
+    }
+
+    if(u8Run)
+    {
+        user_timestamp_query();
+
+        g_u32TsPrevSync = u32Curr;
+    }
+
+    return;
+}
+#endif //#ifdef ALI_TIMESTAMP
+
 
 #if (IOT_DEVICE_DATA_TX_EN == 1)
 osThreadId g_tAppIotDataTxTaskId;
@@ -305,13 +390,16 @@ void Iot_Data_RxTask(void *args)
             #if 1
                 IOT_Linkkit_Yield(g_RxTaskDelayTime);
             #else
-                IOT_Linkkit_Yield(USER_EXAMPLE_YIELD_TIMEOUT_MS);
+                IOT_Linkkit_Yield(USER_EXAMPLE_YIELD_TIMEOUT_MIN_MS);
 
                 // rx behavior
                 //osDelay(10000); // if do nothing for rx behavior, the delay must be exist.
                                // if do something for rx behavior, the delay could be removed
 				osDelay(g_RxTaskDelayTime);
             #endif
+                #ifdef ALI_TIMESTAMP
+                Iot_TimestampProc();
+                #endif
             }
             else
             {
@@ -381,7 +469,7 @@ void Iot_Data_RxTask(void *args)
             {
                 IOT_Linkkit_Tx();
 
-                IOT_Linkkit_Yield(USER_EXAMPLE_YIELD_TIMEOUT_MS);
+                IOT_Linkkit_Yield(USER_EXAMPLE_YIELD_TIMEOUT_MIN_MS);
                 // rx behavior
                 //osDelay(10000); // if do nothing for rx behavior, the delay must be exist.
                                // if do something for rx behavior, the delay could be removed

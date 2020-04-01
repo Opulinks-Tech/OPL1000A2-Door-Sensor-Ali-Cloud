@@ -22,6 +22,7 @@
 #include "blewifi_ctrl.h"
 
 #include "mw_fim_default_group11_project.h"
+#include "infra_config.h"
 
 #ifdef ALI_BLE_WIFI_PROVISION
 #include "core.h"

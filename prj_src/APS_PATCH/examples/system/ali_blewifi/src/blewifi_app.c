@@ -32,7 +32,7 @@
 #include "app_at_cmd.h"
 #include "at_cmd_task_patch.h"
 #include "at_cmd_common.h"
-
+#include "mw_ota.h"
 
 #ifdef ALI_BLE_WIFI_PROVISION
 #include "cmsis_os.h"
@@ -52,12 +52,51 @@
 #define hal_info(...)       HAL_Printf("[prt] "), HAL_Printf(__VA_ARGS__), HAL_Printf("\r\n")
 #define hal_debug(...)      HAL_Printf("[prt] "), HAL_Printf(__VA_ARGS__), HAL_Printf("\r\n")
 
-breeze_dev_info_t dinfo;
+SHM_DATA breeze_dev_info_t dinfo;
 extern void linkkit_event_monitor(int event);
 #endif
 
 blewifi_ota_t *gTheOta = 0;
+void fw_ver_get(char *sBuf, uint32_t u32BufLen)
+{
+    char *saMonth[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+    char s8aMonth[8] = {0};
+    int iYear = 0;
+    int iMonth = 0;
+    int iDay = 0;
+    int iNum = 0;
+    uint16_t u16ProjectId = 0;
+    uint16_t u16ChipId = 0;
+    uint16_t u16FirmwareId = 0;
+    
+    iNum = sscanf(__DATE__, "%s %d %d", s8aMonth, &iDay, &iYear); // build date: e.g. "Jan 30 2020"
 
+    if(iNum > 0)
+    {
+        uint8_t i = 0;
+
+        for(i = 0; i < 12; i++)
+        {
+            if(memcmp(s8aMonth, saMonth[i], 3) == 0)
+            {
+                iMonth = i + 1;
+                break;
+            }
+        }
+    }
+
+    MwOta_VersionGet(&u16ProjectId, &u16ChipId, &u16FirmwareId);
+
+    snprintf(sBuf, u32BufLen, "%s-%04u%02u%02u.%u", 
+             SYSINFO_APP_VERSION, 
+             iYear, iMonth, iDay, 
+             u16FirmwareId);
+
+    return;
+}
+
+
+extern void HAL_SetFirmwareVersion(_IN_ char *FwVersion);
 void BleWifiAppInit(void)
 {
     T_MwFim_SysMode tSysMode;
@@ -65,10 +104,8 @@ void BleWifiAppInit(void)
     
 	gTheOta = 0;
 
-#if (SNTP_FUNCTION_EN == 1)
-    g_ulSntpSecondInit = SNTP_SEC_2019;     // Initialize the Sntp Value
+    g_ulSntpSecondInit = 0;                 // Initialize the Sntp Value
     g_ulSystemSecondInit = 0;               // Initialize System Clock Time
-#endif
 
     // get the settings of system mode
     if (MW_FIM_OK != MwFim_FileRead(MW_FIM_IDX_GP03_PATCH_SYS_MODE, 0, MW_FIM_SYS_MODE_SIZE, (uint8_t*)&tSysMode))
@@ -92,11 +129,6 @@ void BleWifiAppInit(void)
     // only for the user mode
     if ((tSysMode.ubSysMode == MW_FIM_SYS_MODE_INIT) || (tSysMode.ubSysMode == MW_FIM_SYS_MODE_USER))
     {
-        #ifdef BLEWIFI_ALI_BOOT_RESET
-        /* Update Boot Counter */
-        BleWifi_Ctrl_BootCntUpdate();
-        #endif
-
         /* Wi-Fi Initialization */
         BleWifi_Wifi_Init();
 
@@ -124,6 +156,15 @@ void BleWifiAppInit(void)
         dinfo.product_id = HAL_GetProductId();
         iotx_event_regist_cb(linkkit_event_monitor);
 
+        #if 1
+        char s8aVerStr[32] = {0};
+        
+        fw_ver_get(s8aVerStr, sizeof(s8aVerStr));
+        HAL_SetFirmwareVersion(s8aVerStr);
+        #else
+        HAL_SetFirmwareVersion(SYSINFO_APP_VERSION);
+        #endif
+
         /* IoT device Initialization */
         #if (IOT_DEVICE_DATA_TX_EN == 1) || (IOT_DEVICE_DATA_RX_EN == 1)
         Iot_Data_Init();
@@ -136,11 +177,6 @@ void BleWifiAppInit(void)
         
         /* RF Power settings */
         BleWifi_RFPowerSetting(tPowerSaving.ubRFPower);
-
-        #ifdef BLEWIFI_ALI_DEV_SCHED
-        // init device schedule
-        BleWifi_Ctrl_DevSchedInit();
-        #endif
 
         // init door
         BleWifi_Ctrl_DoorInit();

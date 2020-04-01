@@ -102,7 +102,7 @@ void awss_report_token_reply(void *pcontext, void *pclient, void *msg)
     char *id = NULL;
     char reply_id = 0;
     uint32_t payload_len;
-    
+
     ret = awss_cmp_mqtt_get_payload(msg, &payload, &payload_len);
     
 //    printf("xxxawss_report_token_reply-->%d\r\n", ret);
@@ -132,7 +132,7 @@ void awss_report_token_reply(void *pcontext, void *pclient, void *msg)
 }
 
 #ifdef WIFI_PROVISION_ENABLED
-void awss_online_switchap(void *pcontext, void *pclient, void *msg)
+SHM_DATA void awss_online_switchap(void *pcontext, void *pclient, void *msg)
 {
 #define SWITCHAP_RSP_LEN   (64)
 #define AWSS_BSSID_STR_LEN (17)
@@ -294,7 +294,7 @@ static int awss_switch_ap_online()
     if(reboot_timer)
     {
         HAL_Timer_Stop(reboot_timer);
-        HAL_Timer_Start(reboot_timer, 1000);;
+    HAL_Timer_Start(reboot_timer, 1000);;
     }
 
     return 0;

@@ -49,6 +49,16 @@
 
 #define IOTX_LINKKIT_SYNC_DEFAULT_TIMEOUT_MS 10000
 
+#if 1
+volatile uint32_t g_u32RecvMsgId = 0;
+#else
+volatile uint32_t g_u32CurrMsgId = 0;
+volatile uint32_t g_u32MaxExpireOffset = 0;
+volatile uint8_t g_u8MsgIdDiscardCnt = 0;
+#endif
+
+volatile uint8_t g_u8CloudRedirect = 0;
+
 typedef struct {
     int msgid;
     void *semaphore;
@@ -452,11 +462,65 @@ static void _iotx_linkkit_event_callback(iotx_dm_event_types_t type, char *paylo
                 send_permance_info(msg_id.value, msg_id.value_length, "3", 1);
             }
 #endif
+
+#if 1
+            g_u32RecvMsgId = (uint32_t)msg_id.value_int;
+
+            printf("recv id[%u]\n%s\n", g_u32RecvMsgId, property_payload);
+
             callback = iotx_event_callback(ITE_PROPERTY_SET);
             if (callback) {
                 ((int (*)(const int, const char *, const int))callback)(lite_item_devid.value_int, property_payload,
                         lite_item_payload.value_length);
             }
+#else
+            uint32_t u32MsgId = (uint32_t)msg_id.value_int;
+            uint8_t u8ResetCnt = 1;
+
+            printf("new_id[%u] curr_id[%u] max_offset[%u]\n", u32MsgId, g_u32CurrMsgId, g_u32MaxExpireOffset);
+            printf("%s\n", property_payload);
+
+            if(g_u32CurrMsgId)
+            {
+                if(u32MsgId <= g_u32CurrMsgId)
+                {
+                    uint32_t u32Offset = g_u32CurrMsgId - u32MsgId;
+
+                    if(u32Offset <= 100)
+                    {
+                        if(u32Offset > g_u32MaxExpireOffset)
+                        {
+                            g_u32MaxExpireOffset = u32Offset;
+                        }
+
+                        ++g_u8MsgIdDiscardCnt;
+
+                        if(g_u8MsgIdDiscardCnt < 10)
+                        {
+                            printf("expired msq_id[%u] cnt[%u]\n", u32MsgId, g_u8MsgIdDiscardCnt);
+
+                            u8ResetCnt = 0;
+                            goto DONE_WITHOUT_SET;
+                        }
+                    }
+                }
+            }
+
+            g_u32CurrMsgId = u32MsgId;
+
+            callback = iotx_event_callback(ITE_PROPERTY_SET);
+            if (callback) {
+                ((int (*)(const int, const char *, const int))callback)(lite_item_devid.value_int, property_payload,
+                        lite_item_payload.value_length);
+            }
+
+DONE_WITHOUT_SET:
+            if(u8ResetCnt)
+            {
+                g_u8MsgIdDiscardCnt = 0;
+            }
+#endif
+
 #ifdef LOG_REPORT_TO_CLOUD
             if (1 == report_sample) {
                 send_permance_info(NULL, 0, "5", 2);
@@ -1227,6 +1291,7 @@ static int user_redirect_event_handler(void)
     printf("Cloud Redirect\n");
 
     ctx->cloud_redirect = 1;
+    g_u8CloudRedirect = 1;
 
     return 0;
 }

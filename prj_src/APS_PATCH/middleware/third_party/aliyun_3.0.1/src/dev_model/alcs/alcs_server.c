@@ -7,6 +7,8 @@
 #include "alcs_api_internal.h"
 #include "CoAPPlatform.h"
 #include "CoAPResource.h"
+#include "infra_config.h"
+
 #ifdef LOG_REPORT_TO_CLOUD
     #include "iotx_log_report.h"
 #endif
@@ -27,7 +29,7 @@ void utils_hmac_sha1_base64(const char *msg, int msg_len, const char *key, int k
     *digest_len = outlen;
 }
 
-void alcs_rec_auth_select(CoAPContext *ctx, const char *paths, NetworkAddr *from, CoAPMessage *resMsg)
+SHM_DATA void alcs_rec_auth_select(CoAPContext *ctx, const char *paths, NetworkAddr *from, CoAPMessage *resMsg)
 {
     int seqlen, datalen;
     char *seq, *data;
@@ -110,7 +112,7 @@ void alcs_rec_auth_select(CoAPContext *ctx, const char *paths, NetworkAddr *from
     alcs_sendrsp(ctx, from, &msg, 1, resMsg->header.msgid, &token);
 }
 
-svr_key_info *is_legal_key(CoAPContext *ctx, const char *keyprefix, int prefixlen, const char *keyseq, int seqlen,
+SHM_DATA svr_key_info *is_legal_key(CoAPContext *ctx, const char *keyprefix, int prefixlen, const char *keyseq, int seqlen,
                            int *res_code)
 {
     auth_list *lst = get_list(ctx);
@@ -166,7 +168,7 @@ svr_key_info *is_legal_key(CoAPContext *ctx, const char *keyprefix, int prefixle
     return NULL;
 }
 
-void alcs_rec_auth(CoAPContext *ctx, const char *paths, NetworkAddr *from, CoAPMessage *resMsg)
+SHM_DATA void alcs_rec_auth(CoAPContext *ctx, const char *paths, NetworkAddr *from, CoAPMessage *resMsg)
 {
     int seqlen, datalen;
     char *seq, *data;
@@ -475,7 +477,7 @@ static secure_resource_cb_item *get_resource_by_path(const char *path)
     return NULL;
 }
 
-void recv_msg_handler(CoAPContext *context, const char *path, NetworkAddr *remote, CoAPMessage *message)
+SHM_DATA void recv_msg_handler(CoAPContext *context, const char *path, NetworkAddr *remote, CoAPMessage *message)
 {
     secure_resource_cb_item *node = get_resource_by_path(path);
     struct list_head *sessions;
@@ -514,7 +516,7 @@ void recv_msg_handler(CoAPContext *context, const char *path, NetworkAddr *remot
     }
 }
 
-int alcs_resource_register_secure(CoAPContext *context, const char *pk, const char *dn, const char *path,
+SHM_DATA int alcs_resource_register_secure(CoAPContext *context, const char *pk, const char *dn, const char *path,
                                   unsigned short permission,
                                   unsigned int ctype, unsigned int maxage, CoAPRecvMsgHandler callback)
 {
@@ -599,7 +601,7 @@ void alcs_auth_list_deinit(void)
     }
 }
 
-void alcs_rec_heart_beat(CoAPContext *ctx, const char *path, NetworkAddr *remote, CoAPMessage *request)
+SHM_DATA void alcs_rec_heart_beat(CoAPContext *ctx, const char *path, NetworkAddr *remote, CoAPMessage *request)
 {
     struct list_head *ctl_head = get_svr_session_list(ctx);
     session_item *session = NULL;

@@ -462,7 +462,7 @@ static void call_cb(CoAPContext *context, NetworkAddr *remote, CoAPMessage *mess
     }
 }
 
-void secure_sendmsg_handler(CoAPContext *context, CoAPReqResult result, void *userdata, NetworkAddr *remote,
+SHM_DATA void secure_sendmsg_handler(CoAPContext *context, CoAPReqResult result, void *userdata, NetworkAddr *remote,
                             CoAPMessage *message)
 {
     secure_send_item *send_item = (secure_send_item *)userdata;

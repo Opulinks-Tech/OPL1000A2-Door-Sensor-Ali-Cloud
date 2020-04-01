@@ -18,6 +18,7 @@
 #include "alcs_mqtt.h"
 #include "alcs_localsetup.h"
 #include "CoAPPlatform.h"
+#include "infra_config.h"
 
 static iotx_alcs_adapter_t g_alcs_adapter;
 
@@ -106,7 +107,7 @@ static int _iotx_alcs_send_list_search_and_remove(iotx_alcs_adapter_t *adapter, 
     return FAIL_RETURN;
 }
 
-void iotx_alcs_coap_adapter_send_msg_handle(CoAPContext *context,
+SHM_DATA void iotx_alcs_coap_adapter_send_msg_handle(CoAPContext *context,
         CoAPReqResult result,
         void *userdata,
         NetworkAddr *remote,
@@ -258,7 +259,7 @@ int iotx_alcs_adapter_deinit(void)
     return SUCCESS_RETURN;
 }
 
-int iotx_alcs_adapter_init(iotx_alcs_adapter_t *adapter, iotx_alcs_param_t *param)
+SHM_DATA int iotx_alcs_adapter_init(iotx_alcs_adapter_t *adapter, iotx_alcs_param_t *param)
 {
     int res;
     CoAPInitParam coap_param;
@@ -554,7 +555,7 @@ int iotx_alcs_yield(void *handle)
     return res;
 }
 
-int iotx_alcs_send(void *handle, iotx_alcs_msg_t *msg)
+SHM_DATA int iotx_alcs_send(void *handle, iotx_alcs_msg_t *msg)
 {
     int res = 0;
     iotx_alcs_adapter_t *adapter = (iotx_alcs_adapter_t *)handle;
@@ -663,7 +664,7 @@ int iotx_alcs_send(void *handle, iotx_alcs_msg_t *msg)
     return SUCCESS_RETURN;
 }
 
-int iotx_alcs_send_Response(void *handle, iotx_alcs_msg_t *msg, uint8_t token_len, uint8_t *token)
+SHM_DATA int iotx_alcs_send_Response(void *handle, iotx_alcs_msg_t *msg, uint8_t token_len, uint8_t *token)
 {
     int res = 0;
     iotx_alcs_adapter_t *adapter = (iotx_alcs_adapter_t *)handle;
@@ -825,7 +826,7 @@ int iotx_alcs_unregister_resource(void *handle, char *uri)
     return SUCCESS_RETURN;
 }
 
-int iotx_alcs_add_sub_device(void *handle, const char *pk, const char *dn)
+SHM_DATA int iotx_alcs_add_sub_device(void *handle, const char *pk, const char *dn)
 {
     int res = 0;
     iotx_alcs_adapter_t *adapter = (iotx_alcs_adapter_t *)handle;

@@ -31,7 +31,9 @@
 
 #include "sys_os_config.h"
 #include "infra_config.h"
-
+#include "mw_ota_def.h"
+#include "mw_ota.h"
+#include "hal_system.h"
 #define __DEMO__
 
 #define PRODUCT_KEY_LEN     (20)
@@ -301,8 +303,6 @@ void HAL_MutexDestroy(void *mutex)
  */
 void HAL_MutexLock(void *mutex)
 {
-#ifdef ALI_SINGLE_TASK
-#else
     BaseType_t ret;
     QueueHandle_t sem;
     if (mutex == NULL) {
@@ -314,7 +314,6 @@ void HAL_MutexLock(void *mutex)
     while (pdPASS != ret) {
         ret = xSemaphoreTake(sem, 0xffffffff);
     }
-#endif //#ifdef ALI_SINGLE_TASK
 }
 
 /**
@@ -327,15 +326,12 @@ void HAL_MutexLock(void *mutex)
  */
 void HAL_MutexUnlock(void *mutex)
 {
-#ifdef ALI_SINGLE_TASK
-#else
     QueueHandle_t sem;
     if (mutex == NULL) {
         return;
     }
     sem = (QueueHandle_t)mutex;
     (void)xSemaphoreGive(sem);
-#endif //#ifdef ALI_SINGLE_TASK
 }
 
 /**
@@ -832,18 +828,202 @@ int HAL_Awss_Connect_Ap(
 }
 #endif
 
-void HAL_Reboot(void){}
+void HAL_Reboot(void)
+{
+    Hal_Sys_SwResetAll();
+}
+
+static const uint16_t HDR_LEN=24;    
+static char g_tmpbuffer[HDR_LEN];
+static uint32_t g_offset=0;    
+static uint16_t g_tdx=0;
+static uint16_t g_IsDataIn=0;
+static uint16_t g_FirstTimeToWrite=0;
+static uint16_t g_RcvRemainingOTAhdr=0;
+static int idx=0;
+
+volatile uint8_t g_u8OtaIgnored = 0;
     
-void HAL_Firmware_Persistence_Start(void) {}
+void HAL_Firmware_Persistence_Start(void) {
+    
+//    printf("HAL_Firmware_Persistence_Start\r\n");    
+    memset(g_tmpbuffer,0,sizeof(char)*HDR_LEN);
+    g_offset=0;
+    g_tdx=0;
+    g_IsDataIn=0;
+    g_FirstTimeToWrite=0;
+    g_RcvRemainingOTAhdr=0;
+    idx=0;
+
+    g_u8OtaIgnored = 0;
+}
+
 
 int HAL_Firmware_Persistence_Write(_IN_ char *buffer, _IN_ uint32_t length)
 {
+    int iRet = -1;
+    T_MwOtaFlashHeader *ota_hdr = NULL;
+    int Parser_hdr=0;
+    int tt;
 
-    return 0;
+    if(g_u8OtaIgnored)
+    {
+        goto done;
+    }
+
+    if(g_IsDataIn==0)
+    {
+        for(idx=0;idx<length;idx++)
+        {
+            g_offset++;
+            if(g_offset==MW_OTA_HEADER_ADDR_1)
+            {
+                for(tt=idx+1;tt<length;tt++)
+                {            
+                    g_tmpbuffer[g_tdx]=buffer[tt];            
+                    if(g_tdx==(HDR_LEN)-1)
+                    {
+                        Parser_hdr=1;
+//                        printf("g_tdx=%d\r\n", g_tdx);                
+                        break;
+                    }
+                    g_tdx++;
+                }
+                g_RcvRemainingOTAhdr=1;
+                g_offset += (length - idx - 1);
+                iRet = 0;
+                goto done;
+            }
+            else if(g_offset==MW_OTA_IMAGE_ADDR_1)
+            {
+                g_IsDataIn=1;
+                g_FirstTimeToWrite=1;
+                break;
+            }
+            
+            if(g_RcvRemainingOTAhdr==1)
+            {
+                g_tmpbuffer[g_tdx]=buffer[idx];            
+                if(g_tdx==(HDR_LEN)-1)
+                {
+                    Parser_hdr=1;
+                    g_RcvRemainingOTAhdr=0;
+                    g_offset += (length - idx - 1);
+                    break;
+                }
+                g_tdx++;
+                
+            }
+            
+         }
+    }
+         
+    
+    
+    if((Parser_hdr==1)&&(g_tdx==(HDR_LEN)-1))
+    {
+        uint16_t u16ProjectId = 0;
+        uint16_t u16ChipId = 0;
+        uint16_t u16FirmwareId = 0;
+    
+        if(MwOta_VersionGet(&u16ProjectId, &u16ChipId, &u16FirmwareId) != MW_OTA_OK)
+        {
+            printf("[%s %d] MwOta_VersionGet fail\n", __func__, __LINE__);
+            iRet = -2;
+            goto done;
+        }
+          
+        ota_hdr = (T_MwOtaFlashHeader*)g_tmpbuffer;        
+        printf("\r\nproj_id=%d, chip_id=%d, fw_id=%d, checksum=%d, total_len=%d\r\n",
+        ota_hdr->uwProjectId, ota_hdr->uwChipId, ota_hdr->uwFirmwareId, ota_hdr->ulImageSum, ota_hdr->ulImageSize);
+              
+        printf("\r\ndevice proj_id=%d, chip_id=%d, fw_id=%d\r\n",
+               u16ProjectId, u16ChipId, u16FirmwareId);
+
+        if((ota_hdr->uwProjectId != u16ProjectId) || 
+           (ota_hdr->uwChipId != u16ChipId))
+        {
+            printf("[%s %d] invalid firmware\n", __func__, __LINE__);
+            iRet = -3;
+            goto done;
+        }
+
+        /*
+        if(ota_hdr->uwFirmwareId == u16FirmwareId)
+        {
+            printf("[%s %d] ignore same firmware\n", __func__, __LINE__);
+            iRet = -4;
+            goto done;
+        }
+        */
+              
+        if (MwOta_Prepare(ota_hdr->uwProjectId, ota_hdr->uwChipId, ota_hdr->uwFirmwareId, ota_hdr->ulImageSize, ota_hdr->ulImageSum) != MW_OTA_OK)
+        {
+            Parser_hdr=0;
+            g_offset=0;
+            g_tdx=0;
+            if (MwOta_DataGiveUp() != MW_OTA_OK)
+            {
+                printf("ota_abort error.\r\n");
+            }
+            printf("ota_prepare fail\r\n");
+            goto done;
+        }
+        Parser_hdr=0;
+    }
+    
+    
+    if(g_IsDataIn==1)
+    {
+        if(g_FirstTimeToWrite==1)
+        {
+              
+            if (MwOta_DataIn((uint8_t*)(buffer+(idx+1)), (length-(idx+1))) != MW_OTA_OK)
+            {
+                if (MwOta_DataGiveUp() != MW_OTA_OK)
+                {
+                    printf("ota_abort error.\r\n");
+                }
+                printf("ota_data_write fail\r\n");
+                goto done;
+            }
+            g_FirstTimeToWrite=0;           
+        }
+        else
+        {
+            if (MwOta_DataIn((uint8_t*)buffer, length) != MW_OTA_OK)
+            {
+                if (MwOta_DataGiveUp() != MW_OTA_OK)
+                {
+                    printf("ota_abort error.\r\n");
+                }
+                printf("ota_data_write fail\r\n");
+                goto done;
+            }
+        }
+    }
+
+    iRet = 0;
+
+done:
+    if(iRet)
+    {
+        if(!g_u8OtaIgnored)
+        {
+            g_u8OtaIgnored = 1;
+        }
+    }
+    
+    return iRet;
 }
 
 int HAL_Firmware_Persistence_Stop(void)
 {
+//    printf("HAL_Firmware_Persistence_Stop\r\n");
+    if (MwOta_DataFinish() != MW_OTA_OK)
+    {
+        printf("ota_data_finish error.\r\n");
+    }
     return 0;
 }    
 
@@ -1137,17 +1317,29 @@ done:
     #endif
  *
  */
+static char g_FrimwareVer[IOTX_FIRMWARE_VER_LEN+1];
 
 int HAL_GetFirmwareVersion(_OU_ char *version)
 {
-    char *ver = "app-1.0.0-20180101.1000";
-    int len = strlen(ver);
+//    char *ver = "app-1.0.0-20191213.1200";
+    int len = strlen(g_FrimwareVer);
     memset(version, 0x0, IOTX_FIRMWARE_VER_LEN);
 //#ifdef __DEMO__
-    strncpy(version, ver, len);
+    strncpy(version, g_FrimwareVer, len);
     version[len] = '\0';
 //#endif
     return strlen(version);
+}
+
+
+void HAL_SetFirmwareVersion(_IN_ char *FwVersion) 
+{
+    int len = strlen(FwVersion);
+    memset(g_FrimwareVer, 0x0, IOTX_FIRMWARE_VER_LEN);
+
+    strncpy(g_FrimwareVer, FwVersion, len);
+    g_FrimwareVer[len] = '\0';
+
 }
 
 //Netlink Kevin modify for rebinding

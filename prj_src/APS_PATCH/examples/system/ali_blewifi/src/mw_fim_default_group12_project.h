@@ -35,8 +35,6 @@ extern "C" {
 typedef enum
 {
     MW_FIM_IDX_GP12_PATCH_START = 0x01020000,             // the start IDX of group 12
-    MW_FIM_IDX_GP12_PROJECT_DEVICE_AUTH_CONTENT,
-    MW_FIM_IDX_GP12_PROJECT_HOST_INFO,
     MW_FIM_IDX_GP12_PROJECT_VOLTAGE_OFFSET,
     MW_FIM_IDX_GP12_PROJECT_DC_SLOPE,
 
@@ -50,32 +48,6 @@ Declaration of data structure
 // Sec 3: structure, uniou, enum, linked list
 
 #define MW_FIM_VER12_PROJECT 0x07    // 0x00 ~ 0xFF
-
-#define API_KEY_LEN     (68)
-#define DEVICE_ID_LEN   (44)
-#define CHIP_ID_LEN     (20)
-#define MODEL_ID_LEN    (24)
-
-// Coolkit http post conten
-typedef struct
-{
-    char ubaApiKey[API_KEY_LEN];
-    char ubaDeviceId[DEVICE_ID_LEN];
-    char ubaChipId[CHIP_ID_LEN];
-    char ubaModelId[MODEL_ID_LEN];
-} T_MwFim_GP12_HttpPostContent;
-
-#define MW_FIM_GP12_HTTP_POST_CONTENT_SIZE  sizeof(T_MwFim_GP12_HttpPostContent)
-#define MW_FIM_GP12_HTTP_POST_CONTENT_NUM   1
-
-typedef struct
-{
-    char ubaHostInfoURL[128];
-    char ubaHostInfoDIR[128];
-} T_MwFim_GP12_HttpHostInfo;
-
-#define MW_FIM_GP12_HTTP_HOST_INFO_SIZE  sizeof(T_MwFim_GP12_HttpHostInfo)
-#define MW_FIM_GP12_HTTP_HOST_INFO_NUM   1
 
 typedef struct
 {
@@ -103,8 +75,6 @@ Declaration of Global Variables & Functions
 ********************************************/
 // Sec 4: declaration of global variable
 extern const T_MwFimFileInfo g_taMwFimGroupTable12_project[];
-extern const T_MwFim_GP12_HttpPostContent g_tMwFimDefaultGp12HttpPostContent;
-extern const T_MwFim_GP12_HttpHostInfo g_tMwFimDefaultGp12HttpHostInfo;
 extern const T_MwFim_GP12_VoltageOffset g_tMwFimDefaultGp12VoltageOffset;
 extern const T_MwFim_GP12_DCSlope g_tMwFimDefaultGp12DCSlope;
 

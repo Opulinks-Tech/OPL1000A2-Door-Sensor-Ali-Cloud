@@ -60,6 +60,11 @@ WIFI OTA FLAG
 #define WIFI_OTA_UPGRADE_URL     "http://118.31.62.158:80/git/ada_per/opl1000_ota_door.bin"
 #define WIFI_OTA_SCHED_TIME      (24*60) //minutes
 
+#ifndef SYSINFO_APP_VERSION
+//#define SYSINFO_APP_VERSION "app-1.0.0-20191218.1209"
+#define SYSINFO_APP_VERSION     "app-1.0.0"
+#endif
+
 /*
 IoT device
     1. if want to send data to server, set the Tx path to enable
@@ -114,6 +119,11 @@ method 2: full name
 #define BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_PS_MIN   0xFFFF  // 30 min
 #define BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_PS_MAX   0xFFFF  // 30 min
 
+/* For Calibration
+100 (ms) / 0.625 (ms) = 160 = 0xA0
+*/
+#define BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_CAL_MIN   0xA0  // For 100 millisecond
+#define BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_CAL_MAX   0xA0  // For 100 millisecond
 
 // Wifi part
 /* Connection Retry times:
@@ -194,7 +204,7 @@ IO Configuration
 #if 1
 #define BUTTON_IO_PORT      (GPIO_IDX_04)
 #define MAGNETIC_IO_PORT    (GPIO_IDX_05)
-//#define BATTERY_IO_PORT     (GPIO_IDX_07)
+#define BATTERY_IO_PORT     (GPIO_IDX_07)
 #define PER_LED_IO_PORT     (GPIO_IDX_21)
 
 #define PER_DEVICE_IO_PORT  (GPIO_IDX_20) // active high
@@ -204,6 +214,21 @@ IO Configuration
 #define PER_LED_IO_PORT     (GPIO_IDX_19) // active low
 #endif
 
+/* LED time : unit: ms */
+#define LED_TIME_BLE_ON_1           (100)
+#define LED_TIME_BLE_OFF_1          (400)
+
+#define LED_TIME_AUTOCONN_ON_1      (100)
+#define LED_TIME_AUTOCONN_OFF_1     (1900)
+
+#define LED_TIME_ALWAYS_OFF         (0x7FFFFFFF)
+
+/*
+Define the moving average count for temperature and VBAT
+*/
+#define SENSOR_MOVING_AVERAGE_COUNT         (5)
+
+#define ALI_TIMESTAMP
 /*
 Define Maximum Voltage & Minimum Voltage
 */
@@ -215,12 +240,6 @@ Define Maximum Voltage & Minimum Voltage
 Define CR+LF Enable / Disable (Windows:CR+LF, Linux:CR and Mac:LF)
 */
 #define CRLF_ENABLE             (1)
-
-/*
-LED Blink for Networking
-*/
-#define BLEWIFI_CTRL_LED_BLINK_OFF_DUR  (250) // ms
-#define BLEWIFI_CTRL_LED_BLINK_ON_DUR   (250) // ms
 
 /*
 FIM version

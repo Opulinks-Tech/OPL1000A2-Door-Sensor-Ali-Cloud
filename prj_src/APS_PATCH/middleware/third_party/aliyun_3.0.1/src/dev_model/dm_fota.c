@@ -2,6 +2,7 @@
  * Copyright (C) 2015-2018 Alibaba Group Holding Limited
  */
 #include "iotx_dm_internal.h"
+#include "cmsis_os.h"
 
 #if defined(OTA_ENABLED) && !defined(BUILD_AOS)
 
@@ -60,7 +61,146 @@ static int _dm_fota_send_new_config_to_user(void *ota_handle)
 
     return SUCCESS_RETURN;
 }
+extern void HAL_Reboot();
+extern void iot_save_all_cfg(void);
 
+#if 1
+SHM_DATA int dm_fota_perform_sync(_OU_ char *output, _IN_ int output_len)
+{
+    int iRet = DM_INVALID_PARAMETER;
+    int res = 0, file_download = 0;
+    uint32_t file_size = 0, file_downloaded = 0;
+    uint32_t percent_pre = 0, percent_now = 0;
+    unsigned long long report_pre = 0, report_now = 0;
+    dm_fota_ctx_t *ctx = _dm_fota_get_ctx();
+    void *ota_handle = NULL;
+    uint32_t ota_type = IOT_OTAT_NONE;
+    int ret = 0;
+    uint8_t u8OtaIgnored = 0;
+
+    if (output == NULL || output_len <= 0) {
+        iRet = DM_INVALID_PARAMETER;
+        goto error;
+    }
+
+    /* Get Ota Handle */
+    res = dm_ota_get_ota_handle(&ota_handle);
+    if (res != SUCCESS_RETURN) {
+        iRet = FAIL_RETURN;
+        goto error;
+    }
+
+    if (ota_handle == NULL) {
+        iRet = FAIL_RETURN;
+        goto error;
+    }
+    IOT_OTA_Ioctl(ota_handle, IOT_OTAG_OTA_TYPE, &ota_type, 4);
+
+    if (ota_type != IOT_OTAT_FOTA) {
+        iRet = FAIL_RETURN;
+        goto error;
+    }
+
+    /* reset the size_fetched in ota_handle to be 0 */
+    IOT_OTA_Ioctl(ota_handle, IOT_OTAG_RESET_FETCHED_SIZE, ota_handle, 4);
+    /* Prepare Write Data To Storage */
+    HAL_Firmware_Persistence_Start();
+    while (1) {
+        file_download = IOT_OTA_FetchYield(ota_handle, output, output_len, 1);
+        if (file_download < 0) {
+            IOT_OTA_ReportProgress(ota_handle, IOT_OTAP_FETCH_FAILED, NULL);
+            //HAL_Firmware_Persistence_Stop();
+            //ctx->is_report_new_config = 0;
+            printf("IOT_OTA_FetchYield fail\n");
+            u8OtaIgnored = 1;
+            iRet = FAIL_RETURN;
+            goto done;
+        }
+
+        /* Write Config File Into Stroage */
+        ret = HAL_Firmware_Persistence_Write(output, file_download);
+
+        if (ret < 0) {
+            u8OtaIgnored = 1;
+        }
+
+        /* Get OTA information */
+        IOT_OTA_Ioctl(ota_handle, IOT_OTAG_FETCHED_SIZE, &file_downloaded, 4);
+        IOT_OTA_Ioctl(ota_handle, IOT_OTAG_FILE_SIZE, &file_size, 4);
+
+        /* Calculate Download Percent And Update Report Timestamp*/
+        percent_now = (file_downloaded * 100) / file_size;
+        report_now = HAL_UptimeMs();
+
+        /* Report Download Process To Cloud */
+        if (report_now < report_pre) {
+            report_pre = report_now;
+        }
+        if ((((percent_now - percent_pre) > 5) &&
+             ((report_now - report_pre) > 50)) || (percent_now >= IOT_OTAP_FETCH_PERCENTAGE_MAX)) {
+
+            printf("%u%%\n", percent_now);
+
+            if(u8OtaIgnored)
+            {
+                IOT_OTA_ReportProgress(ota_handle, IOT_OTAP_GENERAL_FAILED, NULL);
+            }
+            else
+            {
+                IOT_OTA_ReportProgress(ota_handle, (IOT_OTA_Progress_t)percent_now, NULL);
+            }
+            
+            percent_pre = percent_now;
+            report_pre = report_now;
+        }
+
+        /* Check If OTA Finished */
+        if (IOT_OTA_IsFetchFinish(ota_handle)) {
+            uint32_t file_isvalid = 0;
+            IOT_OTA_Ioctl(ota_handle, IOT_OTAG_CHECK_FIRMWARE, &file_isvalid, 4);
+            if (file_isvalid == 0) {
+                //HAL_Firmware_Persistence_Stop();
+                IOT_OTA_ReportProgress(ota_handle, IOT_OTAP_CHECK_FALIED, NULL);
+                //ctx->is_report_new_config = 0;
+                iRet = FAIL_RETURN;
+                goto done;
+            } else {
+                break;
+            }
+        }
+    }
+
+    iRet = SUCCESS_RETURN;
+
+done:
+    HAL_Firmware_Persistence_Stop();
+    ctx->is_report_new_config = 0;
+
+error:
+    if(u8OtaIgnored)
+    {
+        printf("OTA Ignored\n");
+    }
+    else
+    {
+        if(iRet == SUCCESS_RETURN)
+        {
+            printf("OTA Success: Reboot\r\n");
+        }
+        else
+        {
+            printf("OTA Failed: Reboot\n");
+            
+        }
+
+        iot_save_all_cfg();
+        osDelay(100);
+        HAL_Reboot();
+    }
+    
+    return iRet;
+}
+#else
 int dm_fota_perform_sync(_OU_ char *output, _IN_ int output_len)
 {
     int res = 0, file_download = 0;
@@ -150,9 +290,12 @@ int dm_fota_perform_sync(_OU_ char *output, _IN_ int output_len)
 
     HAL_Firmware_Persistence_Stop();
     ctx->is_report_new_config = 0;
+    printf("OTA_Finish_Reboot\r\n");
+    HAL_Reboot();
 
     return SUCCESS_RETURN;
 }
+#endif
 
 int dm_fota_status_check(void)
 {

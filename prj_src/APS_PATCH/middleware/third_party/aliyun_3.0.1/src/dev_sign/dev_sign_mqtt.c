@@ -153,7 +153,7 @@ int _iotx_generate_sign_string(const char *device_id, const char *device_name, c
     return SUCCESS_RETURN;
 }
 
-int32_t IOT_Sign_MQTT(iotx_mqtt_region_types_t region, iotx_dev_meta_info_t *meta, iotx_sign_mqtt_t *signout)
+SHM_DATA int32_t IOT_Sign_MQTT(iotx_mqtt_region_types_t region, iotx_dev_meta_info_t *meta, iotx_sign_mqtt_t *signout)
 {
     uint16_t length = 0;
     char device_id[IOTX_PRODUCT_KEY_LEN + IOTX_DEVICE_NAME_LEN + 1] = {0};

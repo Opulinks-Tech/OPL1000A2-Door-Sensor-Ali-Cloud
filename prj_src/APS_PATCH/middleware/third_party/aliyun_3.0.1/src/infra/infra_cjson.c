@@ -562,7 +562,7 @@ int lite_cjson_is_object(lite_cjson_t *lite)
     return (lite->type & 0xFF) == cJSON_Object;
 }
 
-int lite_cjson_array_item(lite_cjson_t *lite, int index, lite_cjson_t *lite_item)
+SHM_DATA int lite_cjson_array_item(lite_cjson_t *lite, int index, lite_cjson_t *lite_item)
 {
     parse_buffer buffer;
     parse_buffer *p_buffer = &buffer;
@@ -763,7 +763,7 @@ static int _lite_cjson_key_array_index(const char *key, int key_len,
     return -1;
 }
 
-int lite_cjson_object_item(lite_cjson_t *lite, const char *key, int key_len,
+SHM_DATA int lite_cjson_object_item(lite_cjson_t *lite, const char *key, int key_len,
                            lite_cjson_t *lite_item)
 {
     int res = 0;
@@ -944,20 +944,20 @@ typedef struct {
 void *HAL_Malloc(uint32_t size);
 void HAL_Free(void *ptr);
 
-static void *internal_malloc(uint32_t size)
+SHM_DATA static void *internal_malloc(uint32_t size)
 {
     return HAL_Malloc(size);
 }
 
-static void internal_free(void *ptr)
+SHM_DATA static void internal_free(void *ptr)
 {
     HAL_Free(ptr);
 }
 
-static internal_hooks global_hooks = { internal_malloc, internal_free, NULL };
-static cJSON_bool print_value(const lite_cjson_item_t *const item, printbuffer *const output_buffer);
+SHM_DATA static internal_hooks global_hooks = { internal_malloc, internal_free, NULL };
+SHM_DATA static cJSON_bool print_value(const lite_cjson_item_t *const item, printbuffer *const output_buffer);
 
-void lite_cjson_init_hooks(lite_cjson_hooks *hooks)
+SHM_DATA void lite_cjson_init_hooks(lite_cjson_hooks *hooks)
 {
     if (hooks == NULL || hooks->malloc_fn == NULL || hooks->free_fn == NULL) {
         return;
@@ -967,7 +967,7 @@ void lite_cjson_init_hooks(lite_cjson_hooks *hooks)
     global_hooks.deallocate = hooks->free_fn;
 }
 
-static unsigned char *ensure(printbuffer *const p, size_t needed)
+SHM_DATA static unsigned char *ensure(printbuffer *const p, size_t needed)
 {
     unsigned char *newbuffer = NULL;
     size_t newsize = 0;
@@ -1039,7 +1039,7 @@ static unsigned char *ensure(printbuffer *const p, size_t needed)
 }
 
 /* get the decimal point character of the current locale */
-static unsigned char get_decimal_point(void)
+SHM_DATA static unsigned char get_decimal_point(void)
 {
 #ifdef ENABLE_LOCALES
     struct lconv *lconv = localeconv();
@@ -1049,7 +1049,7 @@ static unsigned char get_decimal_point(void)
 #endif
 }
 
-static int remove_zero(unsigned char buffer[26], int length)
+SHM_DATA static int remove_zero(unsigned char buffer[26], int length)
 {
     int idx = 0, found = 0;
 
@@ -1084,7 +1084,7 @@ static int remove_zero(unsigned char buffer[26], int length)
 }
 
 /* Render the number nicely from the given item into a string. */
-static cJSON_bool print_number(const lite_cjson_item_t *const item, printbuffer *const output_buffer)
+SHM_DATA static cJSON_bool print_number(const lite_cjson_item_t *const item, printbuffer *const output_buffer)
 {
     unsigned char *output_pointer = NULL;
     double d = item->valuedouble;
@@ -1149,7 +1149,7 @@ static cJSON_bool print_number(const lite_cjson_item_t *const item, printbuffer 
 }
 
 /* Render the cstring provided to an escaped version that can be printed. */
-static cJSON_bool print_string_ptr(const unsigned char *const input, printbuffer *const output_buffer)
+SHM_DATA static cJSON_bool print_string_ptr(const unsigned char *const input, printbuffer *const output_buffer)
 {
     const unsigned char *input_pointer = NULL;
     unsigned char *output = NULL;
@@ -1258,13 +1258,13 @@ static cJSON_bool print_string_ptr(const unsigned char *const input, printbuffer
 }
 
 /* Invoke print_string_ptr (which is useful) on an item. */
-static cJSON_bool print_string(const lite_cjson_item_t *const item, printbuffer *const p)
+SHM_DATA static cJSON_bool print_string(const lite_cjson_item_t *const item, printbuffer *const p)
 {
     return print_string_ptr((unsigned char *)item->valuestring, p);
 }
 
 /* calculate the new length of the string in a printbuffer and update the offset */
-static void update_offset(printbuffer *const buffer)
+SHM_DATA static void update_offset(printbuffer *const buffer)
 {
     const unsigned char *buffer_pointer = NULL;
     if ((buffer == NULL) || (buffer->buffer == NULL)) {
@@ -1276,7 +1276,7 @@ static void update_offset(printbuffer *const buffer)
 }
 
 /* Render an array to text */
-static cJSON_bool print_array(const lite_cjson_item_t *const item, printbuffer *const output_buffer)
+SHM_DATA static cJSON_bool print_array(const lite_cjson_item_t *const item, printbuffer *const output_buffer)
 {
     unsigned char *output_pointer = NULL;
     size_t length = 0;
@@ -1330,7 +1330,7 @@ static cJSON_bool print_array(const lite_cjson_item_t *const item, printbuffer *
 }
 
 /* Render an object to text. */
-static cJSON_bool print_object(const lite_cjson_item_t *const item, printbuffer *const output_buffer)
+SHM_DATA static cJSON_bool print_object(const lite_cjson_item_t *const item, printbuffer *const output_buffer)
 {
     unsigned char *output_pointer = NULL;
     size_t length = 0;
@@ -1427,7 +1427,7 @@ static cJSON_bool print_object(const lite_cjson_item_t *const item, printbuffer 
 }
 
 /* Render a value to text. */
-static cJSON_bool print_value(const lite_cjson_item_t *const item, printbuffer *const output_buffer)
+SHM_DATA static cJSON_bool print_value(const lite_cjson_item_t *const item, printbuffer *const output_buffer)
 {
     unsigned char *output = NULL;
 
@@ -1492,7 +1492,7 @@ static cJSON_bool print_value(const lite_cjson_item_t *const item, printbuffer *
     }
 }
 
-static unsigned char *print(const lite_cjson_item_t *const item, cJSON_bool format, const internal_hooks *const hooks)
+SHM_DATA static unsigned char *print(const lite_cjson_item_t *const item, cJSON_bool format, const internal_hooks *const hooks)
 {
     static const size_t default_buffer_size = 256;
     printbuffer buffer[1];
@@ -1544,18 +1544,18 @@ fail:
     return NULL;
 }
 
-char  *lite_cjson_print(lite_cjson_item_t *item)
+SHM_DATA char  *lite_cjson_print(lite_cjson_item_t *item)
 {
     return (char *)print(item, true, &global_hooks);
 }
 
-char  *lite_cjson_print_unformatted(lite_cjson_item_t *item)
+SHM_DATA char  *lite_cjson_print_unformatted(lite_cjson_item_t *item)
 {
     return (char *)print(item, false, &global_hooks);
 }
 
 /* Delete a cJSON structure. */
-void lite_cjson_delete(lite_cjson_item_t *item)
+SHM_DATA void lite_cjson_delete(lite_cjson_item_t *item)
 {
     lite_cjson_item_t *next = NULL;
     while (item != NULL) {
@@ -1574,13 +1574,13 @@ void lite_cjson_delete(lite_cjson_item_t *item)
     }
 }
 
-static void suffix_object(lite_cjson_item_t *prev, lite_cjson_item_t *item)
+SHM_DATA static void suffix_object(lite_cjson_item_t *prev, lite_cjson_item_t *item)
 {
     prev->next = item;
     item->prev = prev;
 }
 
-static cJSON_bool add_item_to_array(lite_cjson_item_t *array, lite_cjson_item_t *item)
+SHM_DATA static cJSON_bool add_item_to_array(lite_cjson_item_t *array, lite_cjson_item_t *item)
 {
     lite_cjson_item_t *child = NULL;
 
@@ -1604,17 +1604,17 @@ static cJSON_bool add_item_to_array(lite_cjson_item_t *array, lite_cjson_item_t 
     return true;
 }
 
-void lite_cjson_add_item_to_array(lite_cjson_item_t *array, lite_cjson_item_t *item)
+SHM_DATA void lite_cjson_add_item_to_array(lite_cjson_item_t *array, lite_cjson_item_t *item)
 {
     add_item_to_array(array, item);
 }
 
-static void *cast_away_const(const void *string)
+SHM_DATA static void *cast_away_const(const void *string)
 {
     return (void *)string;
 }
 
-static unsigned char *cJSON_strdup(const unsigned char *string, const internal_hooks *const hooks)
+SHM_DATA static unsigned char *cJSON_strdup(const unsigned char *string, const internal_hooks *const hooks)
 {
     size_t length = 0;
     unsigned char *copy = NULL;
@@ -1633,7 +1633,7 @@ static unsigned char *cJSON_strdup(const unsigned char *string, const internal_h
     return copy;
 }
 
-static cJSON_bool add_item_to_object(lite_cjson_item_t *const object, const char *const string,
+SHM_DATA static cJSON_bool add_item_to_object(lite_cjson_item_t *const object, const char *const string,
                                      lite_cjson_item_t *const item, const internal_hooks *const hooks, const cJSON_bool constant_key)
 {
     char *new_key = NULL;
@@ -1665,12 +1665,12 @@ static cJSON_bool add_item_to_object(lite_cjson_item_t *const object, const char
     return add_item_to_array(object, item);
 }
 
-void lite_cjson_add_item_to_object(lite_cjson_item_t *object, const char *string, lite_cjson_item_t *item)
+SHM_DATA void lite_cjson_add_item_to_object(lite_cjson_item_t *object, const char *string, lite_cjson_item_t *item)
 {
     add_item_to_object(object, string, item, &global_hooks, false);
 }
 
-static lite_cjson_item_t *cJSON_New_Item(const internal_hooks *const hooks)
+SHM_DATA static lite_cjson_item_t *cJSON_New_Item(const internal_hooks *const hooks)
 {
     lite_cjson_item_t *node = (lite_cjson_item_t *)hooks->allocate(sizeof(lite_cjson_item_t));
     if (node) {
@@ -1680,7 +1680,7 @@ static lite_cjson_item_t *cJSON_New_Item(const internal_hooks *const hooks)
     return node;
 }
 
-lite_cjson_item_t *lite_cjson_create_null(void)
+SHM_DATA lite_cjson_item_t *lite_cjson_create_null(void)
 {
     lite_cjson_item_t *item = cJSON_New_Item(&global_hooks);
     if (item) {
@@ -1690,7 +1690,7 @@ lite_cjson_item_t *lite_cjson_create_null(void)
     return item;
 }
 
-lite_cjson_item_t *lite_cjson_create_true(void)
+SHM_DATA lite_cjson_item_t *lite_cjson_create_true(void)
 {
     lite_cjson_item_t *item = cJSON_New_Item(&global_hooks);
     if (item) {
@@ -1700,7 +1700,7 @@ lite_cjson_item_t *lite_cjson_create_true(void)
     return item;
 }
 
-lite_cjson_item_t *lite_cjson_create_false(void)
+SHM_DATA lite_cjson_item_t *lite_cjson_create_false(void)
 {
     lite_cjson_item_t *item = cJSON_New_Item(&global_hooks);
     if (item) {
@@ -1710,7 +1710,7 @@ lite_cjson_item_t *lite_cjson_create_false(void)
     return item;
 }
 
-lite_cjson_item_t *lite_cjson_create_bool(cJSON_bool b)
+SHM_DATA lite_cjson_item_t *lite_cjson_create_bool(cJSON_bool b)
 {
     lite_cjson_item_t *item = cJSON_New_Item(&global_hooks);
     if (item) {
@@ -1720,7 +1720,7 @@ lite_cjson_item_t *lite_cjson_create_bool(cJSON_bool b)
     return item;
 }
 
-lite_cjson_item_t *lite_cjson_create_number(double num)
+SHM_DATA lite_cjson_item_t *lite_cjson_create_number(double num)
 {
     lite_cjson_item_t *item = cJSON_New_Item(&global_hooks);
     if (item) {
@@ -1739,7 +1739,7 @@ lite_cjson_item_t *lite_cjson_create_number(double num)
 
     return item;
 }
-lite_cjson_item_t *lite_cjson_create_string(const char *string)
+SHM_DATA lite_cjson_item_t *lite_cjson_create_string(const char *string)
 {
     lite_cjson_item_t *item = cJSON_New_Item(&global_hooks);
     if (item) {
@@ -1754,7 +1754,7 @@ lite_cjson_item_t *lite_cjson_create_string(const char *string)
     return item;
 }
 
-lite_cjson_item_t *lite_cjson_create_array(void)
+SHM_DATA lite_cjson_item_t *lite_cjson_create_array(void)
 {
     lite_cjson_item_t *item = cJSON_New_Item(&global_hooks);
     if (item) {
@@ -1764,7 +1764,7 @@ lite_cjson_item_t *lite_cjson_create_array(void)
     return item;
 }
 
-lite_cjson_item_t *lite_cjson_create_object(void)
+SHM_DATA lite_cjson_item_t *lite_cjson_create_object(void)
 {
     lite_cjson_item_t *item = cJSON_New_Item(&global_hooks);
     if (item) {
@@ -1774,7 +1774,7 @@ lite_cjson_item_t *lite_cjson_create_object(void)
     return item;
 }
 
-lite_cjson_item_t *lite_cjson_create_intArray(const int *numbers, int count)
+SHM_DATA lite_cjson_item_t *lite_cjson_create_intArray(const int *numbers, int count)
 {
     size_t i = 0;
     lite_cjson_item_t *n = NULL;
@@ -1803,7 +1803,7 @@ lite_cjson_item_t *lite_cjson_create_intArray(const int *numbers, int count)
     return a;
 }
 
-lite_cjson_item_t *lite_cjson_create_floatArray(const float *numbers, int count)
+SHM_DATA lite_cjson_item_t *lite_cjson_create_floatArray(const float *numbers, int count)
 {
     size_t i = 0;
     lite_cjson_item_t *n = NULL;
@@ -1833,7 +1833,7 @@ lite_cjson_item_t *lite_cjson_create_floatArray(const float *numbers, int count)
     return a;
 }
 
-lite_cjson_item_t *lite_cjson_create_doubleArray(const double *numbers, int count)
+SHM_DATA lite_cjson_item_t *lite_cjson_create_doubleArray(const double *numbers, int count)
 {
     size_t i = 0;
     lite_cjson_item_t *n = NULL;
@@ -1863,7 +1863,7 @@ lite_cjson_item_t *lite_cjson_create_doubleArray(const double *numbers, int coun
     return a;
 }
 
-lite_cjson_item_t *lite_cjson_create_stringArray(const char **strings, int count)
+SHM_DATA lite_cjson_item_t *lite_cjson_create_stringArray(const char **strings, int count)
 {
     size_t i = 0;
     lite_cjson_item_t *n = NULL;

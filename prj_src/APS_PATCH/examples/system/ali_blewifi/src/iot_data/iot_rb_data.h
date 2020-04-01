@@ -29,11 +29,6 @@ typedef struct{
 
     union
     {
-        #ifdef BLEWIFI_ALI_DEV_SCHED
-        T_BleWifi_Ctrl_DevStatus tStatus;
-        T_MwFim_GP23_Dev_Sched taSched[MW_FIM_GP23_DEV_SCHED_NUM];
-        #endif
-
         T_BleWifi_Ctrl_DoorStatus tDoorStatus;
     };
 } IoT_Properity_t;

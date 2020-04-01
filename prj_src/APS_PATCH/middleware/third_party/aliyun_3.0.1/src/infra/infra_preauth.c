@@ -30,7 +30,7 @@
     extern const char *iotx_ca_crt;
 #endif
 
-int _preauth_assemble_auth_req_string(const iotx_dev_meta_info_t *dev_meta, const char *sign,
+SHM_DATA int _preauth_assemble_auth_req_string(const iotx_dev_meta_info_t *dev_meta, const char *sign,
                                       const char *device_id, char *request_buff, uint32_t buff_len)
 {
     uint8_t i = 0;
@@ -70,7 +70,7 @@ int _preauth_assemble_auth_req_string(const iotx_dev_meta_info_t *dev_meta, cons
     return SUCCESS_RETURN;
 }
 
-static int _preauth_get_string_value(char *p_string, char *value_buff, uint32_t buff_len)
+SHM_DATA static int _preauth_get_string_value(char *p_string, char *value_buff, uint32_t buff_len)
 {
     char *p = p_string;
     char *p_start = NULL;
@@ -101,7 +101,7 @@ static int _preauth_get_string_value(char *p_string, char *value_buff, uint32_t 
     return SUCCESS_RETURN;
 }
 
-static int _preauth_parse_auth_rsp_string(char *json_string, uint32_t string_len, iotx_sign_mqtt_t *output)
+SHM_DATA static int _preauth_parse_auth_rsp_string(char *json_string, uint32_t string_len, iotx_sign_mqtt_t *output)
 {
     int res = FAIL_RETURN;
     char *p = json_string;
@@ -190,7 +190,7 @@ int _fill_conn_string(char *dst, int len, const char *fmt, ...)
     return 0;
 }
 
-int preauth_get_connection_info(iotx_mqtt_region_types_t region, iotx_dev_meta_info_t *dev_meta,
+SHM_DATA int preauth_get_connection_info(iotx_mqtt_region_types_t region, iotx_dev_meta_info_t *dev_meta,
                                 const char *sign, const char *device_id, iotx_sign_mqtt_t *preauth_output)
 {
     char http_url[128] = "http://";

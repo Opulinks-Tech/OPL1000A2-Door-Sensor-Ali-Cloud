@@ -6,7 +6,7 @@
 #include "infra_defs.h"
 #include "infra_compat.h"
 
-sdk_impl_ctx_t g_sdk_impl_ctx = {0};
+SHM_DATA sdk_impl_ctx_t g_sdk_impl_ctx = {0};
 
 #if !defined(INFRA_LOG)
 void IOT_SetLogLevel(IOT_LogLevel level) {}

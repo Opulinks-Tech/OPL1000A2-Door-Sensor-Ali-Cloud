@@ -1,4 +1,5 @@
 #include "iotx_dm_internal.h"
+#include "infra_config.h"
 
 #ifdef ALCS_ENABLED
 
@@ -90,7 +91,7 @@ int dm_server_subscribe_all(char product_key[IOTX_PRODUCT_KEY_LEN + 1], char dev
     return SUCCESS_RETURN;
 }
 
-void dm_server_alcs_event_handler(void *pcontext, void *phandle, iotx_alcs_event_msg_t *msg)
+SHM_DATA void dm_server_alcs_event_handler(void *pcontext, void *phandle, iotx_alcs_event_msg_t *msg)
 {
 
 }
@@ -239,7 +240,7 @@ void dm_server_thing_service_property_post(CoAPContext *context, const char *pat
 }
 
 #endif
-void dm_server_thing_dev_core_service_dev(CoAPContext *context, const char *paths, NetworkAddr *remote,
+SHM_DATA void dm_server_thing_dev_core_service_dev(CoAPContext *context, const char *paths, NetworkAddr *remote,
         CoAPMessage *message)
 {
     int res = 0;

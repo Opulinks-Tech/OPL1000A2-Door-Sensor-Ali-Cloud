@@ -41,6 +41,7 @@ Head Block of The File
 #include "hal_system.h"
 #include "hal_pin.h"
 #include "hal_pin_def.h"
+#include "hal_auxadc.h"
 #ifdef __BLEWIFI_TRANSPARENT__
 #include "at_cmd_app_patch.h"
 #include "hal_pin_config_project_transparent.h"
@@ -59,19 +60,21 @@ Head Block of The File
 #include "mw_fim_default_group11_project.h"
 #include "mw_fim_default_group12_project.h"
 #include "mw_fim_default_group21_project.h"
-#include "mw_fim_default_group22_project.h"
-#include "mw_fim_default_group23_project.h"
 #include "ipc_patch.h"
 
 //#include "hal_wdt.h"
 // Sec 2: Constant Definitions, Imported Symbols, miscellaneous
-
+#define MAX_NUM_MEM_POOL        8
 
 /********************************************
 Declaration of data structure
 ********************************************/
 // Sec 3: structure, uniou, enum, linked list
-
+typedef struct os_memory_def
+{
+    uint32_t ulBlockSize;
+    uint32_t ulBlockNum;
+} osMemoryDef_t;
 
 /********************************************
 Declaration of Global Variables & Functions
@@ -79,7 +82,7 @@ Declaration of Global Variables & Functions
 // Sec 4: declaration of global variable
 extern uint8_t* g_ucaMemPartAddr;
 extern uint32_t g_ulMemPartTotalSize;
-
+extern osMemoryDef_t g_xaMemoryTable[MAX_NUM_MEM_POOL];
 
 // Sec 5: declaration of global function prototype
 
@@ -149,6 +152,20 @@ void __Patch_EntryPoint(void)
     // modify the heap size, from 0x439000 to 0x44F000
     g_ucaMemPartAddr = (uint8_t*) 0x439000;
     g_ulMemPartTotalSize = 0x16000;
+    
+    g_xaMemoryTable[0].ulBlockSize = 32;
+    g_xaMemoryTable[0].ulBlockNum  = 80;
+    g_xaMemoryTable[1].ulBlockSize = 64;
+    g_xaMemoryTable[1].ulBlockNum  = 60;
+    g_xaMemoryTable[2].ulBlockSize = 80;
+    g_xaMemoryTable[2].ulBlockNum  = 50;
+    
+    g_xaMemoryTable[3].ulBlockNum = 0;
+    g_xaMemoryTable[4].ulBlockNum = 0;
+    g_xaMemoryTable[5].ulBlockNum = 0;
+    g_xaMemoryTable[6].ulBlockNum = 0;
+    g_xaMemoryTable[7].ulBlockNum = 0;
+//    g_xaMemoryTable[8].ulBlockNum = 0; 
     
     Sys_SetUnsuedSramEndBound(0x439000);
 	    
@@ -234,12 +251,6 @@ static void Main_FlashLayoutUpdate(void)
 
     MwFim_GroupInfoUpdate(2, 1, (T_MwFimFileInfo *)g_taMwFimGroupTable21_project);
     MwFim_GroupVersionUpdate(2, 1, MW_FIM_VER21_PROJECT);
-
-    MwFim_GroupInfoUpdate(2, 2, (T_MwFimFileInfo *)g_taMwFimGroupTable22_project);
-    MwFim_GroupVersionUpdate(2, 2, MW_FIM_VER22_PROJECT);
-
-    MwFim_GroupInfoUpdate(2, 3, (T_MwFimFileInfo *)g_taMwFimGroupTable23_project);
-    MwFim_GroupVersionUpdate(2, 3, MW_FIM_VER23_PROJECT);
 }
 
 /*************************************************************************
@@ -278,6 +289,7 @@ static void Main_MiscModulesInit(void)
 static void Main_MiscDriverConfigSetup(void)
 {
     //Hal_Wdt_Stop();   //disable watchdog here.
+    Hal_Aux_Init();
 
     // IO 1 : detect the GPIO high level if APS UART Rx is connected to another UART Tx port.
     // cold boot

@@ -693,6 +693,21 @@ int IOT_OTA_FetchYield(void *handle, char *buf, uint32_t buf_len, uint32_t timeo
         return IOT_OTAE_INVALID_STATE;
     }
 
+    /* For FOTA test item 3 of Ali certification. Beg*/
+    if (h_ota->md5 == NULL) {
+        h_ota->md5 = otalib_MD5Init();
+        if (h_ota->md5 == NULL) {
+            return FAIL_RETURN;
+        }
+    }
+    if (h_ota->sha256 == NULL) {
+        h_ota->sha256 = otalib_Sha256Init();
+        if (h_ota->sha256 == NULL) {
+            return FAIL_RETURN;
+        }
+    }
+    /* For FOTA test item 3 of Ali certification. End*/
+
     ret = ofc_Fetch(h_ota->ch_fetch, buf, buf_len, timeout_s);
     if (ret < 0) {
         OTA_LOG_ERROR("Fetch firmware failed");
@@ -713,6 +728,22 @@ int IOT_OTA_FetchYield(void *handle, char *buf, uint32_t buf_len, uint32_t timeo
         h_ota->size_fetched = 0;
         return -1;
     } else if (0 == h_ota->size_fetched) {
+        /* For FOTA test item 3 of Ali certification. Beg*/
+        otalib_MD5Deinit(h_ota->md5);
+        h_ota->md5 = otalib_MD5Init();
+        if (h_ota->md5 == NULL) {
+            OTA_LOG_ERROR("md5 init failed");
+            return -1;
+        }
+
+        otalib_Sha256Deinit(h_ota->sha256);
+        h_ota->sha256 = otalib_Sha256Init();
+        if (h_ota->sha256 == NULL) {
+            OTA_LOG_ERROR("sha256 init failed");
+            return -1;
+        }
+        /* For FOTA test item 3 of Ali certification. End*/
+        
         /* force report status in the first */
         IOT_OTA_ReportProgress(h_ota, IOT_OTAP_FETCH_PERCENTAGE_MIN, "Enter in downloading state");
     }
@@ -911,6 +942,12 @@ int IOT_OTA_Ioctl(void *handle, IOT_OTA_CmdType_t type, void *buf, int buf_len)
             } else {
                 char md5_str[33];
                 otalib_MD5Finalize(h_ota->md5, md5_str);
+                
+                /* For FOTA test item 3 of Ali certification. Beg*/
+                otalib_MD5Deinit(h_ota->md5);
+                h_ota->md5 = NULL;
+                /* For FOTA test item 3 of Ali certification. End*/
+                
                 OTA_LOG_DEBUG("origin=%s, now=%s", h_ota->md5sum, md5_str);
                 if (0 == strcmp(h_ota->md5sum, md5_str)) {
                     *((uint32_t *)buf) = 1;

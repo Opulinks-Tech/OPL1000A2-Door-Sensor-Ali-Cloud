@@ -5,6 +5,7 @@
 
 
 #include "iotx_dm_internal.h"
+#include "infra_config.h"
 
 const char DM_URI_SYS_PREFIX[]                        DM_READ_ONLY = "/sys/%s/%s/";
 const char DM_URI_EXT_SESSION_PREFIX[]                DM_READ_ONLY = "/ext/session/%s/%s/";
@@ -944,7 +945,7 @@ int dm_msg_proc_combine_logout_reply(_IN_ dm_msg_source_t *source)
 #endif
 
 #ifdef ALCS_ENABLED
-int dm_msg_proc_thing_dev_core_service_dev(_IN_ dm_msg_source_t *source, _IN_ dm_msg_dest_t *dest,
+/*SHM_DATA */int dm_msg_proc_thing_dev_core_service_dev(_IN_ dm_msg_source_t *source, _IN_ dm_msg_dest_t *dest,
         _OU_ dm_msg_request_payload_t *request, _OU_ dm_msg_response_t *response,
         _OU_ unsigned char **data, int *data_len)
 {

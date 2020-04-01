@@ -6,6 +6,7 @@
 #include <string.h>
 #include "aos.h"
 #include "kvmgr.h"
+#include "infra_config.h"
 
 /* Key-value function return code description */
 typedef enum
@@ -169,7 +170,7 @@ static uint8_t utils_crc8(uint8_t *buf, uint16_t length)
     return crc;
 }
 
-char kv_buffer[KV_TOTAL_SIZE+512];
+SHM_DATA char kv_buffer[KV_TOTAL_SIZE+512];
 
 static int raw_read(uint32_t offset, void *buf, size_t nbytes)
 {

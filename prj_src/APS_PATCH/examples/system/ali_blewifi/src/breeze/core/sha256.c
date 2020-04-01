@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "..\src\breeze\include\sha256.h"
+#include "infra_config.h"
 
 /****************************** MACROS ******************************/
 #define ROTLEFT(a,b) (((a) << (b)) | ((a) >> (32-(b))))
@@ -32,7 +33,7 @@ static const WORD k[64] = {
 };
 
 /*********************** FUNCTION DEFINITIONS ***********************/
-void sha256_transform(SHA256_CTX *ctx, const BYTE data[])
+SHM_DATA void sha256_transform(SHA256_CTX *ctx, const BYTE data[])
 {
 	WORD a, b, c, d, e, f, g, h, i, j, t1, t2, m[64];
 
@@ -102,7 +103,7 @@ void sha256_update(SHA256_CTX *ctx, const BYTE data[], size_t len)
 	}
 }
 
-void sha256_final(SHA256_CTX *ctx, BYTE hash[])
+SHM_DATA void sha256_final(SHA256_CTX *ctx, BYTE hash[])
 {
 	WORD i;
 

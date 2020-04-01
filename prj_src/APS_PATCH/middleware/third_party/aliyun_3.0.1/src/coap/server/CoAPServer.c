@@ -17,11 +17,7 @@ static unsigned int g_coap_running = 0;
     #else
     static void *g_coap_thread = NULL;
     #endif
-
-    #ifdef ALI_RHYTHM_SUPPORT
-    #else
     static void *g_semphore    = NULL;
-    #endif
 #endif
 static CoAPContext *g_context = NULL;
 
@@ -128,14 +124,9 @@ void CoAPServer_add_timer(void (*on_timer)(void *))
 }
 
 
-#ifdef ALI_RHYTHM_SUPPORT
-#else
 static void *coap_init_mutex = NULL;
-#endif
-
 CoAPContext *CoAPServer_init()
 {
-#ifdef ALI_RHYTHM_SUPPORT
     CoAPInitParam param = {0};
 #ifdef COAP_SERV_MULTITHREAD
     #ifdef ALI_SINGLE_TASK
@@ -143,7 +134,7 @@ CoAPContext *CoAPServer_init()
     int stack_used;
     hal_os_thread_param_t task_parms;
     memset((void*)&task_parms,0,sizeof(hal_os_thread_param_t));
-    #endif
+#endif
 #endif
 
     if (NULL == coap_init_mutex) {
@@ -203,7 +194,7 @@ CoAPContext *CoAPServer_init()
         task_parms.stack_size = 4608;
         task_parms.name = "CoAPServer_yield";
         HAL_ThreadCreate(&g_coap_thread, CoAPServer_yield, (void *)g_context, &task_parms, &stack_used);
-        #endif
+#endif
 #endif
 
     } else {
@@ -212,15 +203,10 @@ CoAPContext *CoAPServer_init()
 
     HAL_MutexUnlock(coap_init_mutex);
     return (CoAPContext *)g_context;
-#else //#ifdef ALI_RHYTHM_SUPPORT
-    return NULL;
-#endif //#ifdef ALI_RHYTHM_SUPPORT
 }
 
 void CoAPServer_deinit(CoAPContext *context)
 {
-#ifdef ALI_RHYTHM_SUPPORT
-#else
     if (context != g_context) {
         COAP_INFO("Invalid CoAP Server context");
         return;
@@ -259,7 +245,6 @@ void CoAPServer_deinit(CoAPContext *context)
     HAL_MutexUnlock(coap_init_mutex);
     HAL_MutexDestroy(coap_init_mutex);
     coap_init_mutex = NULL;
-#endif //#ifdef ALI_RHYTHM_SUPPORT
 }
 
 int CoAPServer_register(CoAPContext *context, const char *uri, CoAPRecvMsgHandler callback)

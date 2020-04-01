@@ -13,7 +13,6 @@
 #include "ali_linkkitsdk_decl.h"
 #include "blewifi_configuration.h"
 #include "hal_vic.h"
-#include "mw_fim_default_group23_project.h"
 #include "blewifi_ctrl.h"
 #include "blewifi_ctrl_http_ota.h"
 #include "lwip/etharp.h"
@@ -23,10 +22,8 @@
 #include "iotx_cm_internal.h"
 #include "iotx_mqtt_client.h"
 #include "util_func.h"
-
-#if (SNTP_FUNCTION_EN == 1)
 #include "blewifi_common.h"
-#endif
+#include "mqtt_wrapper.h"
 
 typedef struct
 {
@@ -38,7 +35,7 @@ T_PostInfo g_tPrevPostInfo = {0};
 
 extern void iotx_mc_set_client_state(iotx_mc_client_t *pClient, iotx_mc_state_t newState);
 
-uint32_t g_RxTaskDelayTime = ALI_IOT_RX_DELAY_MAX;
+uint32_t g_RxTaskDelayTime = USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS;
 uint8_t g_userNeedReply = 0;
 //uint8_t g_noReplyCount = 0;
 uint32_t g_u32PrevTimeStamp = 0;
@@ -46,7 +43,6 @@ uint32_t g_u32PrevTimeStamp = 0;
 // {"LocalTimer":[  => 15
 // {"PowerSwitch":0,"Timer":"55 17 * * 1,2,3,4,5,6,7","Enable":1,"IsValid":1},  => 75
 // ]} and '\0'   => 3
-#define PER_SCHED_PROPERTY_LEN      800 //(15 + (75 * MW_FIM_GP05_DEV_SCHED_NUM) + 3)
 #define PER_STATUS_PROPERTY_LEN     256 //32
 #define PER_REPEAT_BUF_LEN          16
 
@@ -86,7 +82,7 @@ static int user_connected_event_handler(void)
     IoT_Ring_Buffer_ResetBuffer();
 	
 	/* Terence, reset status */
-	g_RxTaskDelayTime = ALI_IOT_RX_DELAY_MAX;
+	g_RxTaskDelayTime = USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS;
 	g_userNeedReply = 0;
 //	g_noReplyCount = 0;
 
@@ -106,7 +102,7 @@ static int user_disconnected_event_handler(void)
     IoT_Ring_Buffer_ResetBuffer();
 
 	/* Terence, reset status */
-	g_RxTaskDelayTime = ALI_IOT_RX_DELAY_MAX;
+	g_RxTaskDelayTime = USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS;
 	g_userNeedReply = 0;
 //	g_noReplyCount = 0;
 
@@ -184,7 +180,7 @@ static int user_property_set_event_handler(const int devid, const char *request,
 
     if(res >= 0)
     {
-        post_timing_update(0, ALI_IOT_RX_DELAY_MIN);
+        post_timing_update(0, USER_EXAMPLE_YIELD_TIMEOUT_MIN_MS);
         post_info_update(res, (char *)request, request_len);
     }
 
@@ -222,8 +218,7 @@ static int user_report_reply_event_handler(const int devid, const int msgid, con
 
                 post_info_clear();
     
-                //post_timing_update(BleWifi_Ctrl_DtimTimeGet(), ALI_IOT_RX_DELAY_MAX);
-                post_timing_update(2000, ALI_IOT_RX_DELAY_MAX);
+                post_timing_update(BleWifi_Ctrl_DtimTimeGet(), USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS);
             }
             else
             {
@@ -236,7 +231,7 @@ static int user_report_reply_event_handler(const int devid, const int msgid, con
 
             EXAMPLE_TRACE("code[%d]: clear rb and trigger cloud reconnection\n", code);
 
-            post_timing_update(0, ALI_IOT_RX_DELAY_MIN);
+            post_timing_update(0, USER_EXAMPLE_YIELD_TIMEOUT_MIN_MS);
 
             if((_mqtt_conncection) && (_mqtt_conncection->context))
             {
@@ -275,6 +270,23 @@ static int user_timestamp_reply_event_handler(const char *timestamp)
 {
     EXAMPLE_TRACE("Current Timestamp: %s", timestamp);
 
+    #ifdef ALI_TIMESTAMP
+    if(timestamp)
+    {
+        uint64_t u64TimestampMs = 0;
+        uint32_t u32Timestamp = 0;
+
+        extern void Iot_NextSyncTimeSet(void);
+    
+        u64TimestampMs = strtoull(timestamp, NULL, 10);
+        u32Timestamp = u64TimestampMs / 1000;
+
+        BleWifi_CurrentTimeSet(u32Timestamp);
+
+        Iot_NextSyncTimeSet();
+    }
+    #endif
+
     return 0;
 }
 
@@ -290,6 +302,35 @@ static int user_initialized(const int devid)
     return 0;
 }
 
+/** type:
+  *
+  * 0 - new firmware exist
+  *
+  */
+static int user_fota_event_handler(int type, const char *version)
+{
+    char buffer[128] = {0};
+    int buffer_length = 128;
+    user_example_ctx_t *user_example_ctx = user_example_get_ctx();
+
+    if (type == 0) {
+        char s8aFrimwareVer[IOTX_FIRMWARE_VER_LEN+1] = {0};
+
+        HAL_GetFirmwareVersion(s8aFrimwareVer);
+
+        EXAMPLE_TRACE("New Firmware Version: %s", version);
+        EXAMPLE_TRACE("Current Firmware Version: %s", s8aFrimwareVer);
+
+        BleWifi_Wifi_SetDTIM(0);
+
+        IOT_Linkkit_Query(user_example_ctx->master_devid, ITM_MSG_QUERY_FOTA_DATA, (unsigned char *)buffer, buffer_length);
+
+        BleWifi_Wifi_SetDTIM(BleWifi_Ctrl_DtimTimeGet());
+    }
+
+    return 0;
+}
+
 #if 1
 void user_post_property(IoT_Properity_t *ptProp)
 {
@@ -299,13 +340,6 @@ void user_post_property(IoT_Properity_t *ptProp)
     uint32_t u32BufSize = PER_STATUS_PROPERTY_LEN;
     uint32_t u32Offset = 0;
 	//uint32_t dtimVal = 0;
-
-    #ifdef BLEWIFI_ALI_DEV_SCHED
-    if(ptProp->u8Type == DEV_IND_TYPE_SCHED)
-    {
-        u32BufSize = PER_SCHED_PROPERTY_LEN;
-    }
-    #endif
     
     ps8Buf = (char *)HAL_Malloc(u32BufSize);
 
@@ -325,14 +359,7 @@ void user_post_property(IoT_Properity_t *ptProp)
         #if (SNTP_FUNCTION_EN == 1)
         u32TimeStamp = BleWifi_SntpGetRawData();
         #else
-        util_get_current_time(&u32TimeStamp, NULL);
-
-        if(u32TimeStamp <= g_u32PrevTimeStamp)
-        {
-            u32TimeStamp = g_u32PrevTimeStamp + 1;
-        }
-
-        g_u32PrevTimeStamp = u32TimeStamp;
+        u32TimeStamp = BleWifi_SntpGetRawData(0);
         #endif
 
         if(ptProp->tDoorStatus.u8EnableContact)
@@ -352,9 +379,8 @@ void user_post_property(IoT_Properity_t *ptProp)
             {
                 u8FirstItemDone = 1;
             }
-
-            u32Offset += snprintf(ps8Buf + u32Offset, u32BufSize - u32Offset, "\"BatteryPercentage\":{\"value\":%u,\"time\":%u}", 
-                                  ptProp->tDoorStatus.u8BatteryPercentage, u32TimeStamp);
+            u32Offset += snprintf(ps8Buf + u32Offset, u32BufSize - u32Offset, "\"BatteryPercentage\":{\"value\":%.2f,\"time\":%u}", 
+                                  ptProp->tDoorStatus.fBatteryVoltagePercentage, u32TimeStamp);
             u8FirstItemDone = 1;
         }
 
@@ -423,62 +449,6 @@ void user_post_property(IoT_Properity_t *ptProp)
 
         u32Offset += snprintf(ps8Buf + u32Offset, u32BufSize - u32Offset, "}");
     }
-    #ifdef BLEWIFI_ALI_DEV_SCHED
-    else if(ptProp->u8Type == DEV_IND_TYPE_STATUS)
-    {
-        u32Offset = snprintf(ps8Buf, u32BufSize, "{\"PowerSwitch\":%d}", ptProp->tStatus.u8DevOn);
-    }
-    else if(ptProp->u8Type == DEV_IND_TYPE_SCHED)
-    {
-        uint8_t i = 0, j = 0, k = 0;
-        
-        u32Offset = snprintf(ps8Buf, u32BufSize, "{\"LocalTimer\":[");
-
-        for(i = 0; i < MW_FIM_GP23_DEV_SCHED_NUM; i++)
-        {
-            char s8aRepeatBuf[PER_REPEAT_BUF_LEN] = {0};
-            uint32_t u8RepeatBufSize = PER_REPEAT_BUF_LEN;
-            uint32_t u32RepeatOffset = 0;
-            
-            if(i)
-            {
-                u32Offset += snprintf(ps8Buf + u32Offset, u32BufSize - u32Offset, ",");
-            }
-
-            k = 0;
-
-            for(j = 1; j < 8; j++)
-            {
-                if(ptProp->taSched[i].u8RepeatMask & (1 << j))
-                {
-                    if(k)
-                    {
-                        u32RepeatOffset += snprintf(s8aRepeatBuf + u32RepeatOffset, u8RepeatBufSize - u32RepeatOffset, ",");
-                    }
-
-                    u32RepeatOffset += snprintf(s8aRepeatBuf + u32RepeatOffset, u8RepeatBufSize - u32RepeatOffset, "%u", j);
-                    k++;
-                }
-            }
-
-            if(!k)
-            {
-                strcpy(s8aRepeatBuf, "*");
-            }
-
-            u32Offset += snprintf(ps8Buf + u32Offset, u32BufSize - u32Offset, "{\"PowerSwitch\":%u,\"Timer\":\"%u %u * * %s\",\"Enable\":%u,\"IsValid\":%u}"
-                                  , ptProp->taSched[i].u8DevOn
-                                  , ptProp->taSched[i].u8Min
-                                  , ptProp->taSched[i].u8Hour
-                                  , s8aRepeatBuf
-                                  , ptProp->taSched[i].u8Enable
-                                  , ptProp->taSched[i].u8IsValid
-                                  );
-        }
-
-        u32Offset += snprintf(ps8Buf + u32Offset, u32BufSize - u32Offset, "]}");
-    }
-    #endif
 
     EXAMPLE_TRACE("buf:\n%s\n", ps8Buf);
 
@@ -489,7 +459,7 @@ void user_post_property(IoT_Properity_t *ptProp)
 	
     if(res >= 0)
     {
-        post_timing_update(0, ALI_IOT_RX_DELAY_MIN);
+        post_timing_update(0, USER_EXAMPLE_YIELD_TIMEOUT_MIN_MS);
         post_info_update(res, ps8Buf, u32Offset);
     }
 
@@ -610,6 +580,7 @@ int ali_linkkit_init(user_example_ctx_t *user_example_ctx)
     IOT_RegisterCallback(ITE_TRIGGER_EVENT_REPLY, user_trigger_event_reply_event_handler);
     IOT_RegisterCallback(ITE_TIMESTAMP_REPLY, user_timestamp_reply_event_handler);
     IOT_RegisterCallback(ITE_INITIALIZE_COMPLETED, user_initialized);
+    IOT_RegisterCallback(ITE_FOTA, user_fota_event_handler);
 					
 					
     /* Choose Login Server, domain should be configured before IOT_Linkkit_Open() */
@@ -667,3 +638,17 @@ void IOT_Linkkit_Tx()
 done:
     return;
 }
+
+void iot_save_all_cfg(void)
+{
+    return;
+}
+
+#ifdef ALI_TIMESTAMP
+void user_timestamp_query(void)
+{
+    user_example_ctx_t *user_example_ctx = user_example_get_ctx();
+
+    IOT_Linkkit_Query(user_example_ctx->master_devid, ITM_MSG_QUERY_TIMESTAMP, NULL, 0);
+}
+#endif

@@ -66,8 +66,6 @@ void blewifi_ctrl_http_ota_task_evt_handler(uint32_t evt_type, void *data, int l
                 BleWifi_Wifi_OtaTrigRsp(BLEWIFI_WIFI_OTA_SUCCESS);
                 BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_OTHER_OTA_OFF, NULL, 0);
             }
-
-            BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_OTA, false);
             break;
         case BLEWIFI_CTRL_HTTP_OTA_MSG_DEVICE_VERSION:
         {
@@ -75,9 +73,9 @@ void blewifi_ctrl_http_ota_task_evt_handler(uint32_t evt_type, void *data, int l
             uint16_t pid;
             uint16_t cid;
             uint16_t fid;
-            
+
             ota_get_version(&pid, &cid, &fid);
-            
+
             printf("BLEWIFI_CTRL_HTTP_OTA_MSG_DEVICE_VERSION pid = %d, cid = %d, fid = %d\n", pid, cid, fid);
             BleWifi_Wifi_OtaDeviceVersionRsp(fid);
         }
@@ -86,7 +84,7 @@ void blewifi_ctrl_http_ota_task_evt_handler(uint32_t evt_type, void *data, int l
         {
             BLEWIFI_INFO("BLEWIFI: MSG BLEWIFI_CTRL_HTTP_OTA_MSG_SERVER_VERSION \r\n");
             uint16_t fid;
-            
+
             if (ota_download_by_http_get_server_version(WIFI_OTA_HTTP_URL, &fid) != 0)
             {
                 fid = 0;
@@ -102,7 +100,7 @@ void blewifi_ctrl_http_ota_task_evt_handler(uint32_t evt_type, void *data, int l
         case BLEWIFI_CTRL_HTTP_OTA_MSG_SCHED_TIMEOUT:
             blewifi_ctrl_ota_sched_timeout_handle(evt_type, data, len);
             break;
-        
+
         default:
             break;
     }
@@ -112,17 +110,17 @@ void blewifi_http_ota_task(void *args)
 {
     osEvent rxEvent;
     xBleWifiCtrlHttpOtaMessage_t *rxMsg;
-    
+
     for(;;)
     {
         /* Wait event */
         rxEvent = osMessageGet(BleWifiCtrlHttpOtaQueueId, osWaitForever);
         if(rxEvent.status != osEventMessage)
             continue;
-            
+
         rxMsg = (xBleWifiCtrlHttpOtaMessage_t *)rxEvent.value.p;
         blewifi_ctrl_http_ota_task_evt_handler(rxMsg->event, rxMsg->ucaMessage, rxMsg->length);
-        
+
         /* Release buffer */
         if (rxMsg != NULL)
             free(rxMsg);
@@ -133,19 +131,19 @@ void blewifi_ctrl_http_ota_task_create(void)
 {
     osThreadDef_t task_def;
     osMessageQDef_t blewifi_queue_def;
-    
+
     /* Create ble-wifi task */
     task_def.name = "blewifi ctrl http ota";
     task_def.stacksize = OS_TASK_STACK_SIZE_APP * 2;
     task_def.tpriority = OS_TASK_PRIORITY_APP;
     task_def.pthread = blewifi_http_ota_task;
-    
+
     BleWifCtrliHttpOtaTaskId = osThreadCreate(&task_def, (void*)NULL);
     if(BleWifCtrliHttpOtaTaskId == NULL)
     {
         BLEWIFI_INFO("BLEWIFI: ctrl task create fail \r\n");
     }
-    
+
     /* Create message queue*/
     blewifi_queue_def.item_sz = sizeof(xBleWifiCtrlHttpOtaMessage_t);
     blewifi_queue_def.queue_sz = BLEWIFI_CTRL_HTTP_OTA_QUEUE_SIZE;
@@ -160,7 +158,7 @@ int blewifi_ctrl_http_ota_msg_send(int msg_type, uint8_t *data, int data_len)
 {
     int iRet = -1;
     xBleWifiCtrlHttpOtaMessage_t *pMsg = NULL;
-    
+
     /* Mem allocate */
     pMsg = malloc(sizeof(xBleWifiCtrlHttpOtaMessage_t) + data_len);
     if (pMsg == NULL)
@@ -168,22 +166,22 @@ int blewifi_ctrl_http_ota_msg_send(int msg_type, uint8_t *data, int data_len)
         BLEWIFI_ERROR("ota: malloc fail\n");
         goto done;
     }
-    
+
     pMsg->event = msg_type;
     pMsg->length = data_len;
     if (data_len > 0)
     {
         memcpy(pMsg->ucaMessage, data, data_len);
     }
-    
-    if (osMessagePut(BleWifiCtrlHttpOtaQueueId, (uint32_t)pMsg, osWaitForever) != osOK)
+
+    if (osMessagePut(BleWifiCtrlHttpOtaQueueId, (uint32_t)pMsg, 0) != osOK)
     {
         BLEWIFI_ERROR("ota: osMessagePut fail\n");
         goto done;
     }
-    
+
     iRet = 0;
-    
+
 done:
     if(iRet)
     {
@@ -192,7 +190,7 @@ done:
             free(pMsg);
         }
     }
-    
+
     return iRet;
 }
 
@@ -259,9 +257,7 @@ void blewifi_ctrl_ota_sched_start(uint32_t u32Sec)
 
     osTimerStop(g_tOtaSchedTimer);
 
-    #if (SNTP_FUNCTION_EN == 1)
-    BleWifi_SntpGet(&tInfo);
-    #endif
+    BleWifi_SntpGet(&tInfo, g_s32TimeZoneSec);
 
     if(u32Sec)
     {

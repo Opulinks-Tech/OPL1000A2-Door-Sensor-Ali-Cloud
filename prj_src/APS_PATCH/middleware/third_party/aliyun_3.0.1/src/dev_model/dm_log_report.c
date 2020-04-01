@@ -134,7 +134,7 @@ int stop_sample()
     return remove_log_poll();
 }
 
-void parse_switch_info(_IN_ char *payload, _IN_ int payload_len)
+SHM_DATA void parse_switch_info(_IN_ char *payload, _IN_ int payload_len)
 {
     lite_cjson_t lite, lite_sample_count, lite_sample_interval, lite_sample_target;
     const char *c1 = "Count";
@@ -193,7 +193,7 @@ void parse_switch_info(_IN_ char *payload, _IN_ int payload_len)
 
 REPORT_STATE g_report_status = READY;
 
-void send_permance_info(char *input, int input_len, char *comments, int report_format)
+SHM_DATA void send_permance_info(char *input, int input_len, char *comments, int report_format)
 {
 #define LOCAL_POST_LEN (150)
     char data[LOCAL_POST_LEN] = {0};

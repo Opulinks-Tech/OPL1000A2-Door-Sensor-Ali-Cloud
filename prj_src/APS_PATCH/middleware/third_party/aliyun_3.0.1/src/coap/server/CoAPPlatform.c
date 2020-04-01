@@ -4,8 +4,9 @@
 
 #include <stdio.h>
 #include <ctype.h>
+#include "infra_config.h"
 
-unsigned int platform_aton(const char *ip_str)
+SHM_DATA unsigned int platform_aton(const char *ip_str)
 {
     char c;
     unsigned char base;

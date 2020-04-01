@@ -3,6 +3,8 @@
  */
 
 #include "iotx_ota_internal.h"
+#include "infra_config.h"
+#include "dm_ota.h"
 
 /* ofc, OTA fetch channel */
 
@@ -34,8 +36,13 @@ void *ofc_Init(char *url)
     memset(h_odc, 0, sizeof(otahttp_Struct_t));
 
     /* set http request-header parameter */
+    #if 1 // httpclient can not handle gzip/deflate encoding
+    h_odc->http.header = NULL;
+    #else
     h_odc->http.header = "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n" \
                          "Accept-Encoding: gzip, deflate\r\n";
+    #endif
+    
 #if defined(SUPPORT_ITLS)
     char *s_ptr = strstr(url, "://");
     if (strlen("https") == (s_ptr - url) && (0 == strncmp(url, "https", strlen("https")))) {
@@ -51,6 +58,74 @@ void *ofc_Init(char *url)
 
 extern const char *iotx_ca_crt;
 
+#ifdef ALI_HTTP_COMPATIBLE
+
+#if 1
+int32_t ofc_Fetch(void *handle, char *buf, uint32_t buf_len, uint32_t timeout_s)
+{
+    int                 iHttpRet = FAIL_RETURN;
+    int                 diff;
+    otahttp_Struct_pt   h_odc = (otahttp_Struct_pt)handle;
+
+    extern volatile uint8_t g_u8UseHttp;
+
+    h_odc->http_data.response_buf = buf;
+    h_odc->http_data.response_buf_len = buf_len;
+    diff = h_odc->http_data.response_content_len - h_odc->http_data.retrieve_len;
+
+    g_u8UseHttp = 1;
+
+    iHttpRet = httpclient_common_(&h_odc->http, h_odc->url, 80, 0, HTTPCLIENT_GET, timeout_s * 1000,
+                                  &h_odc->http_data);
+
+    g_u8UseHttp = 0;
+
+    if(iHttpRet != SUCCESS_RETURN) {
+        OTA_LOG_ERROR("fetch firmware failed");
+        return -1;
+    }
+
+    return h_odc->http_data.response_content_len - h_odc->http_data.retrieve_len - diff;
+}
+#else
+int32_t ofc_Fetch(void *handle, char *buf, uint32_t buf_len, uint32_t timeout_s)
+{
+    int                 diff;
+    otahttp_Struct_pt   h_odc = (otahttp_Struct_pt)handle;
+
+    h_odc->http_data.response_buf = buf;
+    h_odc->http_data.response_buf_len = buf_len;
+    diff = h_odc->http_data.response_content_len - h_odc->http_data.retrieve_len;
+
+    extern volatile uint8_t g_u8UseHttp;
+
+    if(g_u8UseHttp)
+    {
+        if (0 != httpclient_common_(&h_odc->http, h_odc->url, 80, 0, HTTPCLIENT_GET, timeout_s * 1000,
+                                   &h_odc->http_data)) {
+            OTA_LOG_ERROR("fetch firmware failed");
+            return -1;
+        }
+    }
+    else
+    {
+    #if !defined(SUPPORT_TLS)
+        if (0 != httpclient_common_(&h_odc->http, h_odc->url, 80, 0, HTTPCLIENT_GET, timeout_s * 1000,
+                                   &h_odc->http_data)) {
+    #else
+        if (0 != httpclient_common_(&h_odc->http, h_odc->url, 443, iotx_ca_crt, HTTPCLIENT_GET, timeout_s * 1000,
+                                   &h_odc->http_data)) {
+    #endif
+            OTA_LOG_ERROR("fetch firmware failed");
+            return -1;
+        }
+    }
+
+    return h_odc->http_data.response_content_len - h_odc->http_data.retrieve_len - diff;
+}
+#endif
+
+#else //#ifdef ALI_HTTP_COMPATIBLE
 int32_t ofc_Fetch(void *handle, char *buf, uint32_t buf_len, uint32_t timeout_s)
 {
     int                 diff;
@@ -73,6 +148,7 @@ int32_t ofc_Fetch(void *handle, char *buf, uint32_t buf_len, uint32_t timeout_s)
 
     return h_odc->http_data.response_content_len - h_odc->http_data.retrieve_len - diff;
 }
+#endif //#ifdef ALI_HTTP_COMPATIBLE
 
 
 int ofc_Deinit(void *handle)

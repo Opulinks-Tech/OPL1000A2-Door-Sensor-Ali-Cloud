@@ -15,14 +15,15 @@
 #include "sys_common_api.h"
 #include "sys_cfg_patch.h"
 #include "lwip/errno.h"
+#include "infra_config.h"
+#include "blewifi_configuration.h"
 
-#if (SNTP_FUNCTION_EN == 1)
 #include "cmsis_os.h"
 #include "lwip/netdb.h"
 
 uint32_t g_ulSystemSecondInit;    // System Clock Time Initialize
 uint32_t g_ulSntpSecondInit;      // GMT Time Initialize
-#endif
+int32_t g_s32TimeZoneSec = (3600 * SNTP_TIME_ZONE); // Time Zone
 
 void BleWifi_HexDump(const char *title, const uint8_t *buf, size_t len)
 {
@@ -46,7 +47,6 @@ void BleWifi_HexDump(const char *title, const uint8_t *buf, size_t len)
 
 }
 
-#if (SNTP_FUNCTION_EN == 1)
 uint32_t BleWifi_CurrentSystemTimeGet(void)
 {
     uint32_t ulTick;
@@ -75,7 +75,8 @@ uint32_t BleWifi_CurrentSystemTimeGet(void)
     return ulsecond;
 }
 
-int BleWifi_SntpInit(void)
+#if (SNTP_FUNCTION_EN == 1)
+SHM_DATA int BleWifi_SntpInit(void)
 {
     int lRet = false;
     sntp_header_t sntp_h;
@@ -115,7 +116,7 @@ int BleWifi_SntpInit(void)
     server.sin_addr.s_addr = addr->s_addr;
 
     // When sntp get data fail, then reconnect the connection.
-    while (retry < 5)
+    while (retry < 3)
     {
         sockfd = socket(AF_INET,SOCK_DGRAM,0);
         if (sockfd < 0) {
@@ -179,7 +180,7 @@ int BleWifi_SntpInit(void)
                 g_ulSntpSecondInit = ntohl(sntp_h.trantimeint);
                 rawtime = SNTP_CONVERT_TIME(g_ulSntpSecondInit);
                 pSntpTime = localtime(&rawtime);
-                printf("Current time: %d-%d-%d %d:%d:%d\n", pSntpTime->tm_year + 1900, pSntpTime->tm_mon + 1, pSntpTime->tm_mday, pSntpTime->tm_hour, pSntpTime->tm_min, pSntpTime->tm_sec);
+                printf("Current time: %d-%02d-%02d %02d:%02d:%02d\n", pSntpTime->tm_year + 1900, pSntpTime->tm_mon + 1, pSntpTime->tm_mday, pSntpTime->tm_hour, pSntpTime->tm_min, pSntpTime->tm_sec);
                 lRet = true;
                 if (sockfd >= 0)
                     close(sockfd);
@@ -199,7 +200,46 @@ fail:
 
     return lRet;
 }
+#endif
 
+#ifdef ALI_TIMESTAMP
+void BleWifi_CurrentTimeSet(uint32_t u32Timestamp)
+{
+    g_ulSystemSecondInit = BleWifi_CurrentSystemTimeGet();
+    g_ulSntpSecondInit = u32Timestamp;
+    return;
+}
+
+void BleWifi_SntpGet(struct tm *pSystemTime, int32_t s32TimeZoneSec)
+{
+    time_t rawtime;
+    struct tm * timeinfo;
+    uint32_t ulTmpSystemSecond = 0;
+    uint32_t ulDeltaSystemSecond = 0;
+
+    ulTmpSystemSecond = BleWifi_CurrentSystemTimeGet();
+    ulDeltaSystemSecond =  (ulTmpSystemSecond - g_ulSystemSecondInit);
+    rawtime = g_ulSntpSecondInit + ulDeltaSystemSecond + s32TimeZoneSec;
+    timeinfo = localtime(&rawtime);
+    memcpy(pSystemTime, timeinfo, sizeof(struct tm));
+    pSystemTime->tm_year = pSystemTime->tm_year + 1900;
+    pSystemTime->tm_mon = pSystemTime->tm_mon + 1;
+    // printf("Current time: %d-%d-%d %d:%d:%d\n", pSystemTime->tm_year, pSystemTime->tm_mon, pSystemTime->tm_mday, pSystemTime->tm_hour, pSystemTime->tm_min, pSystemTime->tm_sec);
+}
+
+time_t BleWifi_SntpGetRawData(int32_t s32TimeZoneSec)
+{
+    time_t rawtime;
+    uint32_t ulTmpSystemSecond = 0;
+    uint32_t ulDeltaSystemSecond = 0;
+
+    ulTmpSystemSecond = BleWifi_CurrentSystemTimeGet();
+    ulDeltaSystemSecond =  (ulTmpSystemSecond - g_ulSystemSecondInit);
+    rawtime = g_ulSntpSecondInit + ulDeltaSystemSecond + s32TimeZoneSec;
+
+    return rawtime;
+}
+#else
 void BleWifi_SntpGet(struct tm *pSystemTime)
 {
     time_t rawtime;

@@ -12,6 +12,7 @@
 
 #include "infra_types.h"
 #include "infra_json_parser.h"
+#include "infra_config.h"
 
 void *HAL_Malloc(uint32_t size);
 void HAL_Free(void *ptr);
@@ -53,7 +54,7 @@ char *json_get_object(int type, char *str, char *str_end)
     return pos;
 }
 
-char *json_get_next_object(int type, char *str, char *str_end, char **key, int *key_len,
+SHM_DATA char *json_get_next_object(int type, char *str, char *str_end, char **key, int *key_len,
                            char **val, int *val_len, int *val_type)
 {
     char    JsonMark[JTYPEMAX][2] = { { '\"', '\"' }, { '{', '}' }, { '[', ']' }, { '0', ' ' } };

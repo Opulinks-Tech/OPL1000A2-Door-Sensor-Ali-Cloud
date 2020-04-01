@@ -395,7 +395,7 @@ void utils_hmac_sha1(const char *msg, int msg_len, char *digest, const char *key
     }
 }
 
-void utils_hmac_sha1_hex(const char *msg, int msg_len, char *digest, const char *key, int key_len)
+SHM_DATA void utils_hmac_sha1_hex(const char *msg, int msg_len, char *digest, const char *key, int key_len)
 {
     iot_sha1_context context;
     unsigned char k_ipad[SHA1_KEY_IOPAD_SIZE];    /* inner padding - key XORd with ipad  */

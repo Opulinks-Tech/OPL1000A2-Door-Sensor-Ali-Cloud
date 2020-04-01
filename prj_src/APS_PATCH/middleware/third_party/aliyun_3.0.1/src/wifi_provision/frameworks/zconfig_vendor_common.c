@@ -256,12 +256,12 @@ int zconfig_add_active_channel(int channel)
 
 /*
  * channel scanning/re-scanning control
- * Note: 修改该函?�时，�??��??��?平台差�?
- * 庆�?平台�
+ * Note: 修改该函数时，需考虑到各平台差异
+ * 庆科平台：
  * --aws_switch_channel() 为空
- * --zconfig_destroy()会被调用两次，�?次被aws_main_thread_fun()，�?次被庆�?驱动
- * linux/rtos平台差�?
- * --vendor_recv_80211_frame()?��??��?rtos平台该函?�通常为空，通�?注�?callback?��??��?
+ * --zconfig_destroy()会被调用两次，一次被aws_main_thread_fun()，一次被庆科驱动
+ * linux/rtos平台差异
+ * --vendor_recv_80211_frame()有实现，rtos平台该函数通常为空，通过注册callback方式收包
  */
 void aws_main_thread_func(void)
 {

@@ -40,7 +40,7 @@ enum {
     BLE_AWSS_CTYPE_APPTOKEN = 0x04,
 };
 
-breeze_apinfo_t comboinfo;
+SHM_DATA breeze_apinfo_t comboinfo;
 #define CLIENTID_STR "clientId"
 #define DEVICE_NAME_STR "deviceName"
 #define DEVICE_SECRET_STR "deviceSecret"
@@ -55,7 +55,7 @@ extern uint8_t g_u8aAppToken[RANDOM_MAX_LEN];
 typedef ret_code_t (*ext_tlv_handler_t)(uint8_t *p_buff, uint8_t *p_blen,
                                         const uint8_t *p_data, uint8_t dlen);
 
-extcmd_t g_extcmd;
+SHM_DATA extcmd_t g_extcmd;
 
 typedef struct {
     uint8_t tlv_type;

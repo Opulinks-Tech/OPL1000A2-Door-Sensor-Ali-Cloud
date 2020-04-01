@@ -26,6 +26,7 @@
 #include "blewifi_configuration.h"
 #include "blewifi_http_ota.h"
 #include "lwip/etharp.h"
+#include "infra_config.h"
 
 #if (WIFI_OTA_FUNCTION_EN == 1)
 /****************************************************************************
@@ -86,7 +87,7 @@ static uint8_t ota_abort(void)
     return state;
 }
 
-int ota_http_retrieve_offset_server_version(httpclient_t *client, httpclient_data_t *client_data, int offset, int parse_hdr, uint16_t *uwfid)
+SHM_DATA int ota_http_retrieve_offset_server_version(httpclient_t *client, httpclient_data_t *client_data, int offset, int parse_hdr, uint16_t *uwfid)
 {
     int ret = HTTPCLIENT_ERROR_CONN;
     int response_code = 0;
@@ -137,7 +138,7 @@ int ota_http_retrieve_offset_server_version(httpclient_t *client, httpclient_dat
     return HTTPCLIENT_OK;
 }
 
-int ota_http_retrieve_offset(httpclient_t *client, httpclient_data_t *client_data, int offset, int parse_hdr)
+SHM_DATA int ota_http_retrieve_offset(httpclient_t *client, httpclient_data_t *client_data, int offset, int parse_hdr)
 {
     int ret = HTTPCLIENT_ERROR_CONN;
     uint8_t ota_hdr1_start = 0;
@@ -180,7 +181,7 @@ int ota_http_retrieve_offset(httpclient_t *client, httpclient_data_t *client_dat
     return HTTPCLIENT_OK;
 }
 
-int ota_http_retrieve_get(char* get_url, char* buf, uint32_t len)
+SHM_DATA int ota_http_retrieve_get(char* get_url, char* buf, uint32_t len)
 {
     int ret = HTTPCLIENT_ERROR_CONN;
     httpclient_data_t client_data = {0};
@@ -356,7 +357,7 @@ int ota_http_get_server_version(char* get_url, char* buf, uint32_t len, uint16_t
     
 }
 
-int ota_download_by_http_get_server_version(char *param, uint16_t *uwfid)
+SHM_DATA int ota_download_by_http_get_server_version(char *param, uint16_t *uwfid)
 {
     char get_url[OTA_URL_BUF_LEN];
     int32_t ret = HTTPCLIENT_ERROR_CONN;
@@ -421,7 +422,7 @@ int ota_download_by_http_get_server_version(char *param, uint16_t *uwfid)
         return -1;
 }
 
-int ota_download_by_http(char *param)
+SHM_DATA int ota_download_by_http(char *param)
 {
     char get_url[OTA_URL_BUF_LEN];
     int32_t ret = HTTPCLIENT_ERROR_CONN;

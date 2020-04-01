@@ -306,7 +306,7 @@ int awss_notify_dev_info(int type, int count)
 static void *coap_session_ctx = NULL;
 
 //static int awss_process_get_devinfo()
-int awss_process_get_devinfo()	
+SHM_DATA int awss_process_get_devinfo()	
 {
     int iRet = -1;
     char *buf = NULL;

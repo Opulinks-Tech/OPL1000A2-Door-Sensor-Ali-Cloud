@@ -103,7 +103,7 @@ ERROR:
     return res;
 }
 
-int dm_cota_perform_sync(_OU_ char *output, _IN_ int output_len)
+SHM_DATA int dm_cota_perform_sync(_OU_ char *output, _IN_ int output_len)
 {
     int res = 0, file_download = 0;
     uint32_t file_size = 0, file_downloaded = 0;

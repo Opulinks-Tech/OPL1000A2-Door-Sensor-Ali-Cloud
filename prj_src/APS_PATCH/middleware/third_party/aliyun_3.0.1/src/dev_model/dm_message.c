@@ -3,6 +3,7 @@
  */
 
 #include "iotx_dm_internal.h"
+#include "infra_config.h"
 
 static dm_msg_ctx_t g_dm_msg_ctx;
 
@@ -1650,9 +1651,9 @@ int dm_msg_combine_logout_reply(dm_msg_response_payload_t *response)
 #endif
 
 #ifdef ALCS_ENABLED
-const char DM_MSG_DEV_CORE_SERVICE_DEV[] DM_READ_ONLY =
+/*SHM_DATA */const char DM_MSG_DEV_CORE_SERVICE_DEV[] DM_READ_ONLY =
             "{\"devices\":{\"addr\":\"%s\",\"port\":%d,\"pal\":\"linkkit-ica\",\"profile\":%s}}";
-int dm_msg_dev_core_service_dev(char **payload, int *payload_len)
+SHM_DATA int dm_msg_dev_core_service_dev(char **payload, int *payload_len)
 {
     int res = 0, index = 0, search_devid = 0;
     char product_key[IOTX_PRODUCT_KEY_LEN + 1] = {0};

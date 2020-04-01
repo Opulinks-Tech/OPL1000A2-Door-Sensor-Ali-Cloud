@@ -14,9 +14,7 @@
 
 #include "msg.h"
 #include "blewifi_configuration.h"
-#if (SNTP_FUNCTION_EN == 1)
 #include <time.h>
-#endif
 
 //#define BLEWIFI_SHOW_INFO
 //#define BLEWIFI_SHOW_DUMP
@@ -88,10 +86,18 @@ tm Data Structure
 int BleWifi_SntpInit(void);
 void BleWifi_SntpGet(struct tm *pSystemTime);
 time_t BleWifi_SntpGetRawData(void);
+#endif
+
+#ifdef ALI_TIMESTAMP
+void BleWifi_SntpGet(struct tm *pSystemTime, int32_t s32TimeZoneSec);
+time_t BleWifi_SntpGetRawData(int32_t s32TimeZoneSec);
+#endif
+
+void BleWifi_CurrentTimeSet(uint32_t u32Utc);
 
 extern uint32_t g_ulSystemSecondInit;    // System Clock Time
 extern uint32_t g_ulSntpSecondInit;      // GMT Time
-#endif
+extern int32_t g_s32TimeZoneSec;         // Time Zone
 
 void BleWifi_RFPowerSetting(uint8_t level);
 

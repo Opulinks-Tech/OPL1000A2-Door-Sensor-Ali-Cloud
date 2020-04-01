@@ -13,6 +13,8 @@
 #include "breeze_hal_ble.h"
 #include "breeze_hal_sec.h"
 
+#include "infra_config.h"
+
 
 static uint8_t device_secret[MAX_SECRET_LEN] = { 0 };
 static uint8_t product_secret[PRODUCT_SECRET_LEN]  = { 0 };
@@ -30,7 +32,7 @@ static uint16_t product_secret_len = 0;
 
 bool g_dn_complete = false;
 
-auth_t g_auth;
+SHM_DATA auth_t g_auth;
 
 /*static void on_timeout(void *arg1, void *arg2)
 {

@@ -112,13 +112,14 @@ static int mbedtls_net_connect_ex( mbedtls_net_context *ctx, const char *host, c
         
         printf("local_addr.sin_port=%d\n", local_addr.sin_port);
 
-    #if 1 // non-blocking socket
+    #if 1 // non-blocking
         flags = fcntl(fd, F_GETFL, 0);
         fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 
         if ( connect( fd, cur->ai_addr, cur->ai_addrlen ) == 0 ) {
             ctx->fd = fd; // connected!
             ret = 0;
+            fcntl( fd, F_SETFL, fcntl( fd, F_GETFL, 0 ) & ~O_NONBLOCK );
             break;
         } else {
             if (errno == EINPROGRESS) {
@@ -132,6 +133,7 @@ static int mbedtls_net_connect_ex( mbedtls_net_context *ctx, const char *host, c
                 
                 tv.tv_sec = 3;
                 tv.tv_usec = 0;
+                fcntl( fd, F_SETFL, fcntl( fd, F_GETFL, 0 ) & ~O_NONBLOCK );
                 int selres = select(fd + 1, &rfds, &wfds, NULL, &tv);
 
                 if (selres > 0) {
@@ -157,12 +159,6 @@ static int mbedtls_net_connect_ex( mbedtls_net_context *ctx, const char *host, c
     }
 
     freeaddrinfo( addr_list );
-
-    // restore to blocking socket for read/write operations (blocking)
-    if(ret == 0)
-    {
-         fcntl( ctx->fd, F_SETFL, fcntl( ctx->fd, F_GETFL, 0 ) & ~O_NONBLOCK );
-    }
 
     return ( ret );
 }
@@ -214,7 +210,7 @@ static int tcp_poll_write(int fd, int timeout_ms)
     return select(fd + 1, NULL, &writeset, NULL, &timeout);
 }
 
-int mbedtls_net_send_timeout( void *ctx, const unsigned char *buf, size_t len )
+SHM_DATA int mbedtls_net_send_timeout( void *ctx, const unsigned char *buf, size_t len )
 {
     int ret;
     int fd = ((mbedtls_net_context *) ctx)->fd;
@@ -224,26 +220,34 @@ int mbedtls_net_send_timeout( void *ctx, const unsigned char *buf, size_t len )
     if ( fd < 0 ) {
         return ( MBEDTLS_ERR_NET_INVALID_CONTEXT );
     }
-
+#if 0
     if ((ret = tcp_poll_write(fd, 2000)) <= 0) {
         hal_err("tcp write timeout");
 
         return -1;//select timeout, error
     }
-
+#endif
     //hal_err("write B");
     t.tv_sec = 2;
     t.tv_usec = 0;
     if (setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &t, sizeof(t)) != 0) {
         printf("set timeout failed.\n");
+
+        if ((ret = tcp_poll_write(fd, 2000)) <= 0) {
+            hal_err("tcp write timeout");
+    
+            return -1;//select timeout, error
+        }
     }
     ret = (int) write( fd, buf, len );
     //hal_err("write E");
     if ( ret < 0 ) {
+        hal_err("write fail, ret[%d]", ret);
+
         if ( net_would_block( ctx, &error ) != 0 ) {
             return ( MBEDTLS_ERR_SSL_WANT_WRITE );
         }
-
+				
         if ( error == EPIPE || error == ECONNRESET ) {
             return ( MBEDTLS_ERR_NET_CONN_RESET );
         }

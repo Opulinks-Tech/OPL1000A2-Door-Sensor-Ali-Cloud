@@ -8,6 +8,7 @@
 #include "infra_types.h"
 #include "infra_defs.h"
 #include "alcs_base64.h"
+#include "infra_config.h"
 
 static int8_t g_encodingTable[] = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
                                    'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
@@ -39,7 +40,7 @@ static void build_decoding_table()
     return;
 }
 
-int utils_base64encode(const uint8_t *data, uint32_t inputLength, uint32_t outputLenMax,
+SHM_DATA int utils_base64encode(const uint8_t *data, uint32_t inputLength, uint32_t outputLenMax,
                        uint8_t *encodedData, uint32_t *outputLength)
 {
     uint32_t i = 0;

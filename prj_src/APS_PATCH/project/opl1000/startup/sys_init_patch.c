@@ -28,6 +28,7 @@
 #include "hal_vic_patch.h"
 #include "hal_gpio.h"
 #include "hal_spi_patch.h"
+#include "hal_flash_patch.h"
 #include "hal_uart_patch.h"
 #include "hal_dbg_uart_patch.h"
 #include "hal_auxadc_patch.h"
@@ -51,6 +52,7 @@
 #include "mw_fim_patch.h"
 #include "mw_fim_default_group01_patch.h"
 #include "sys_cfg_patch.h"
+#include "opl1000_it_patch.h"
 
 
 /*
@@ -461,7 +463,10 @@ void SysInit_EntryPoint(void)
     le_ctrl_pre_patch_init();
     
     // 8. le_host
-    LeHostPatchAssign();
+    //LeHostPatchAssign();
+    void LeGapIfPatch_Init(void);
+    LeGapIfPatch_Init();
+
 
     // 9. LwIP
     lwip_module_interface_init_patch();
@@ -481,6 +486,7 @@ void SysInit_EntryPoint(void)
     Hal_Pin_PatchInit();
     Hal_Vic_PatchInit();
     Hal_Spi_PatchInit();
+    Hal_Flash_PatchInit();
     Hal_Uart_PatchInit();
     Hal_DbgUart_PatchInit();
     Hal_Aux_PatchInit();
@@ -492,6 +498,7 @@ void SysInit_EntryPoint(void)
     ps_patch_init();
 
     // 17. ISR
+    ISR_Pre_PatchInit();
 
     // 18. DIAG
     Diag_PatchInit();

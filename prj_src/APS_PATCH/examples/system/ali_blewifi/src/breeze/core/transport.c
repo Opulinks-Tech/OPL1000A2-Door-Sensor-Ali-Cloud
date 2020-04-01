@@ -13,6 +13,7 @@
 
 #include "breeze_hal_sec.h"
 #include "breeze_hal_os.h"
+#include "infra_config.h"
 
 #define HEADER_SIZE 4
 #define AES_BLK_SIZE 16
@@ -25,7 +26,7 @@
 #define FRAME_LEN(data) (data[3])
 
 extern bool g_dn_complete;
-transport_t g_transport;
+SHM_DATA transport_t g_transport;
 struct rx_cmd_post_t rx_cmd_post;
 
 void reset_tx(void)

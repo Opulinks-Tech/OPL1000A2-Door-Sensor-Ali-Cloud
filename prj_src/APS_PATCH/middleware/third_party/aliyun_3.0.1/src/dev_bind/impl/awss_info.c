@@ -76,7 +76,7 @@ CONNAP_M_FAIL:
     return -1;
 }
 
-int process_get_device_info(void *ctx, void *resource, void *remote, void *request, char is_mcast, int type)
+SHM_DATA int process_get_device_info(void *ctx, void *resource, void *remote, void *request, char is_mcast, int type)
 {
     char *buf = NULL;
     char *dev_info = NULL;

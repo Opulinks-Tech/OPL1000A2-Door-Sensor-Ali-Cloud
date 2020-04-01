@@ -29,8 +29,7 @@ typedef struct {
 #define utils_md5_process  mbedtls_md5_process
 
 #define iot_md5_context    mbedtls_md5_context
-//#endif
-#else 
+#endif
 
 /**
  * \brief          Initialize MD5 context
@@ -81,7 +80,6 @@ void utils_md5_finish(iot_md5_context *ctx, unsigned char output[16]);
 
 /* Internal use */
 void utils_md5_process(iot_md5_context *ctx, const unsigned char data[64]);
-#endif
 
 /**
  * \brief          Output = MD5( input buffer )

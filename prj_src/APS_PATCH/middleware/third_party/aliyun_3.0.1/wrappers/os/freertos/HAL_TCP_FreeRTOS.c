@@ -27,6 +27,7 @@
 #include "lwip/dns.h"
 #include "iotx_hal_internal.h"
 #include "coap_wrapper.h"
+#include "infra_config.h"
 
 #define hal_emerg(...)      HAL_Printf("[prt] "), HAL_Printf(__VA_ARGS__), HAL_Printf("\r\n")
 #define hal_crit(...)       HAL_Printf("[prt] "), HAL_Printf(__VA_ARGS__), HAL_Printf("\r\n")
@@ -134,7 +135,7 @@ int HAL_TCP_Destroy(uintptr_t fd)
     return 0;
 }
 
-int32_t HAL_TCP_Write(uintptr_t fd, const char *buf, uint32_t len, uint32_t timeout_ms)
+SHM_DATA int32_t HAL_TCP_Write(uintptr_t fd, const char *buf, uint32_t len, uint32_t timeout_ms)
 {
     int ret;
     uint32_t len_sent;
@@ -168,7 +169,6 @@ int32_t HAL_TCP_Write(uintptr_t fd, const char *buf, uint32_t len, uint32_t time
                 }
             } else if (0 == ret) {
                 hal_err("select-write timeout: fd[%d] %s", fd, strerror(errno));
-                hal_err("select-write timeout: sec[%u] us[%u]", timeout.tv_sec, timeout.tv_usec);
                 break;
             } else {
                 //if (EINTR == errno) {

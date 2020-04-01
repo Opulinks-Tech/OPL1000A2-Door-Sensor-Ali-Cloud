@@ -27,7 +27,7 @@
 #define COAP_DEFAULT_WAIT_TIME_MS   2000
 
 
-CoAPContext *CoAPContext_create(CoAPInitParam *param)
+SHM_DATA CoAPContext *CoAPContext_create(CoAPInitParam *param)
 {
     CoAPIntContext    *p_ctx = NULL;
     NetworkInit    network_param;

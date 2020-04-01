@@ -221,6 +221,189 @@ static int connect_tcp(utils_network_pt pNetwork)
 #endif  /* #ifdef SUPPORT_TLS */
 
 /****** network interface ******/
+
+#ifdef ALI_HTTP_COMPATIBLE
+volatile uint8_t g_u8UseHttp = 0;
+
+extern int32_t HAL_TCP_Read(uintptr_t fd, char *buf, uint32_t len, uint32_t timeout_ms);
+extern int32_t HAL_TCP_Write(uintptr_t fd, const char *buf, uint32_t len, uint32_t timeout_ms);
+extern int HAL_TCP_Destroy(uintptr_t fd);
+extern uintptr_t HAL_TCP_Establish(const char *host, uint16_t port);
+
+static int read_tcp(utils_network_pt pNetwork, char *buffer, uint32_t len, uint32_t timeout_ms)
+{
+    return HAL_TCP_Read(pNetwork->handle, buffer, len, timeout_ms);
+}
+
+static int write_tcp(utils_network_pt pNetwork, const char *buffer, uint32_t len, uint32_t timeout_ms)
+{
+    return HAL_TCP_Write(pNetwork->handle, buffer, len, timeout_ms);
+}
+
+static int disconnect_tcp(utils_network_pt pNetwork)
+{
+    if (pNetwork->handle == (uintptr_t)(-1)) {
+        net_err("Network->handle = -1");
+        return -1;
+    }
+
+    HAL_TCP_Destroy(pNetwork->handle);
+    pNetwork->handle = (uintptr_t)(-1);
+    return 0;
+}
+
+static int connect_tcp(utils_network_pt pNetwork)
+{
+    if (NULL == pNetwork) {
+        net_err("network is null");
+        return 1;
+    }
+
+    pNetwork->handle = HAL_TCP_Establish(pNetwork->pHostAddress, pNetwork->port);
+    if (pNetwork->handle == (uintptr_t)(-1)) {
+        return -1;
+    }
+
+    return 0;
+}
+
+int utils_net_read(utils_network_pt pNetwork, char *buffer, uint32_t len, uint32_t timeout_ms)
+{
+    int     ret = 0;
+
+    if(g_u8UseHttp)
+    {
+        if (NULL == pNetwork->ca_crt) {
+            ret = read_tcp(pNetwork, buffer, len, timeout_ms);
+        }
+        else {
+            ret = -1;
+            net_err("ota: no method match!");
+        }
+    }
+    else
+    {
+    #ifdef SUPPORT_TLS
+        if (NULL != pNetwork->ca_crt) {
+            ret = read_ssl(pNetwork, buffer, len, timeout_ms);
+        }
+    #else
+        if (NULL == pNetwork->ca_crt) {
+            ret = read_tcp(pNetwork, buffer, len, timeout_ms);
+        }
+    #endif
+        else {
+            ret = -1;
+            net_err("no method match!");
+        }
+    }
+
+    return ret;
+}
+
+int utils_net_write(utils_network_pt pNetwork, const char *buffer, uint32_t len, uint32_t timeout_ms)
+{
+    int     ret = 0;
+
+    if(g_u8UseHttp)
+    {
+        if (NULL == pNetwork->ca_crt) {
+            ret = write_tcp(pNetwork, buffer, len, timeout_ms);
+        }
+        else {
+            ret = -1;
+            net_err("ota: no method match!");
+        }
+    }
+    else
+    {
+    #ifdef SUPPORT_TLS
+        if (NULL != pNetwork->ca_crt) {
+            ret = write_ssl(pNetwork, buffer, len, timeout_ms);
+        }
+    #else
+        if (NULL == pNetwork->ca_crt) {
+            ret = write_tcp(pNetwork, buffer, len, timeout_ms);
+        }
+    #endif
+    
+        else {
+            ret = -1;
+            net_err("no method match!");
+        }
+    }
+
+    return ret;
+}
+
+int iotx_net_disconnect(utils_network_pt pNetwork)
+{
+    int     ret = 0;
+
+    if(g_u8UseHttp)
+    {
+        if (NULL == pNetwork->ca_crt) {
+            ret = disconnect_tcp(pNetwork);
+        }
+        else {
+            ret = -1;
+            net_err("ota: no method match!");
+        }
+    }
+    else
+    {
+    #ifdef SUPPORT_TLS
+        if (NULL != pNetwork->ca_crt) {
+            ret = disconnect_ssl(pNetwork);
+        }
+    #else
+        if (NULL == pNetwork->ca_crt) {
+            ret = disconnect_tcp(pNetwork);
+        }
+    #endif
+        else {
+            ret = -1;
+            net_err("no method match!");
+        }
+    }
+
+    return  ret;
+}
+
+int iotx_net_connect(utils_network_pt pNetwork)
+{
+    int     ret = 0;
+
+    if(g_u8UseHttp)
+    {
+        if (NULL == pNetwork->ca_crt) {
+            ret = connect_tcp(pNetwork);
+        }
+        else {
+            ret = -1;
+            net_err("ota: no method match!");
+        }
+    }
+    else
+    {
+    #ifdef SUPPORT_TLS
+        if (NULL != pNetwork->ca_crt) {
+            ret = connect_ssl(pNetwork);
+        }
+    #else
+        if (NULL == pNetwork->ca_crt) {
+            ret = connect_tcp(pNetwork);
+        }
+    #endif
+        else {
+            ret = -1;
+            net_err("no method match!");
+        }
+    }
+
+    return ret;
+}
+#else //#ifdef ALI_HTTP_COMPATIBLE
 int utils_net_read(utils_network_pt pNetwork, char *buffer, uint32_t len, uint32_t timeout_ms)
 {
     int     ret = 0;
@@ -301,6 +484,7 @@ int iotx_net_connect(utils_network_pt pNetwork)
 
     return ret;
 }
+#endif //#ifdef ALI_HTTP_COMPATIBLE
 
 int iotx_net_init(utils_network_pt pNetwork, const char *host, uint16_t port, const char *ca_crt)
 {

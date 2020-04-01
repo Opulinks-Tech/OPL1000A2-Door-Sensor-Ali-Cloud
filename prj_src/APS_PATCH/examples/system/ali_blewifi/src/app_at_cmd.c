@@ -21,17 +21,32 @@
 #include "blewifi_ctrl.h"
 #include "blewifi_data.h"
 
+#include "hal_vic.h"
+#include "hal_pin.h"
+#include "blewifi_ble_api.h"
+#include "hal_auxadc_internal.h"
+#include "sensor_battery.h"
+#include "blewifi_configuration.h"
+#include "mw_fim_default_group12_project.h"
+
 #include "agent_patch.h"
 #include "mw_fim.h"
 #include "at_cmd_data_process_patch.h"
 #include "mw_fim_default_group21_project.h"
 
+extern uint32_t g_ulHalAux_AverageCount;
+extern T_HalAuxCalData g_tHalAux_CalData;
+
+#define CAL_DEBUG
 //#define AT_LOG                      msg_print_uart1
 #define AT_LOG(...)
 
 /* For at_cmd_sys_write_fim */
 #define AT_FIM_DATA_LENGTH 2 /* EX: 2 = FF */
 #define AT_FIM_DATA_LENGTH_WITH_COMMA (AT_FIM_DATA_LENGTH + 1) /* EX: 3 = FF, */
+
+#define AT_AUXADC_IO_VOLTAGE_GET_AVERAGE_COUNT    (3000)
+#define AT_AUXADC_VALUE_GET_AVERAGE_COUNT         (1000)
 
 typedef struct
 {
@@ -125,7 +140,7 @@ done:
     return iRet;
 }
 
-int write_fim_handle(uint32_t u32Type, uint8_t *u8aData, uint32_t u32DataLen, void *pParam)
+SHM_DATA int write_fim_handle(uint32_t u32Type, uint8_t *u8aData, uint32_t u32DataLen, void *pParam)
 {
     T_AtFimParam *ptParam = (T_AtFimParam *)pParam;
     
@@ -493,13 +508,222 @@ int app_at_cmd_sys_do_wifi_ota(char *buf, int len, int mode)
 }
 #endif
 
+
+int app_at_cmd_sys_get_voltage(char *buf, int len, int mode)
+{
+    int iRet = 0;
+    int argc = 0;
+    char *argv[AT_MAX_CMD_ARGS] = {0};
+
+    float fVBat;
+    float fVBatAverage = 0;
+
+#ifdef CAL_DEBUG
+    // For ADC value use
+    uint32_t ulAdcConditionValue;
+#endif
+
+    if (!at_cmd_buf_to_argc_argv(buf, &argc, argv, AT_MAX_CMD_ARGS))
+    {
+        goto done;
+    }
+
+    switch (mode)
+    {
+        case AT_CMD_MODE_READ:
+        {
+            BleWifi_Ble_AdvertisingTimeChange(BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_CAL_MIN, BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_CAL_MAX);
+            g_ulHalAux_AverageCount = AT_AUXADC_IO_VOLTAGE_GET_AVERAGE_COUNT;
+            Hal_Aux_IoVoltageGet(BATTERY_IO_PORT, &fVBat);
+            fVBatAverage = fVBat;
+			msg_print_uart1("ADC fVBatAverage[%.2f]\n",fVBatAverage);
+#ifdef CAL_DEBUG
+            // Print IO7 ADC value
+            Hal_Pin_ConfigSet(7, PIN_TYPE_AUX_7, PIN_DRIVING_FLOAT);
+            if (1 != Hal_Aux_SourceSelect(HAL_AUX_SRC_GPIO, 7))
+                return 0;
+
+            if (1 != Hal_Aux_AdcValueGet(&ulAdcConditionValue))
+                 return 0;
+
+            msg_print_uart1("ADC [%d]\n",ulAdcConditionValue);
+#endif
+            BleWifi_Ble_AdvertisingTimeChange(BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_PS_MIN, BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_PS_MAX);
+            // fVBatPercentage need multiple 2 then add voltage offset (fVoltageOffset)
+            fVBatAverage = (fVBatAverage * 2);
+
+            break;
+        }
+
+        default:
+            goto done;
+    }
+
+    iRet = 1;
+
+done:
+    if(iRet)
+    {
+        msg_print_uart1("AT+GETVOLTAGE=%f\r\n",fVBatAverage);
+    }
+    else
+    {
+        msg_print_uart1("AT+GETVOLTAGE=ERROR\r\n");
+    }
+
+    return iRet;
+
+}
+
+int app_at_cmd_sys_voltage_offset(char *buf, int len, int mode)
+{
+    int iRet = 0;
+    int argc = 0;
+    char *argv[AT_MAX_CMD_ARGS] = {0};
+
+    uint8_t Index;
+    uint32_t ulAdcValue;
+    float fAdcSumValue;
+    float fVoltage;
+    T_MwFim_GP12_DCSlope DCSlope;
+
+    if (!at_cmd_buf_to_argc_argv(buf, &argc, argv, AT_MAX_CMD_ARGS))
+    {
+        goto done;
+    }
+
+    switch (mode)
+    {
+        case AT_CMD_MODE_READ:
+        {
+            if (MW_FIM_OK != MwFim_FileRead(MW_FIM_IDX_GP12_PROJECT_DC_SLOPE, 0, MW_FIM_GP12_DC_SLOPE_SIZE, (uint8_t*)&DCSlope))
+            {
+                // if fail, return fail
+                 goto done;
+            }
+
+            // Calibration data
+            msg_print_uart1("Slope = %d, DC = %d\n",(int)(DCSlope.fSlope * 1000000), DCSlope.DC);
+
+            break;
+        }
+
+        case AT_CMD_MODE_SET:
+        {
+            if(argc != 3)
+            {
+                AT_LOG("invalid param number\r\n");
+                goto done;
+            }
+
+            Index = atoi(argv[1]);
+            fVoltage = atoi(argv[2]);
+
+            if ((Index != 1) && (Index != 2))
+                goto done;
+
+            // Base on voltage dividing circuit, so original voltage (MAXIMUM_VOLTAGE_DEF & MINIMUM_VOLTAGE_DEF) must multiply 2000.
+            if (fVoltage > ((MAXIMUM_VOLTAGE_DEF * 2) * 1000))
+                goto done;
+
+            if (fVoltage < ((MINIMUM_VOLTAGE_DEF * 2) * 1000))
+                goto done;
+
+            // Get IO7 ADC value
+            Hal_Pin_ConfigSet(7, PIN_TYPE_AUX_7, PIN_DRIVING_FLOAT);
+            if (1 != Hal_Aux_SourceSelect(HAL_AUX_SRC_GPIO, 7))
+                return 0;
+
+            BleWifi_Ble_AdvertisingTimeChange(BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_CAL_MIN, BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_CAL_MAX);
+
+            g_ulHalAux_AverageCount = AT_AUXADC_VALUE_GET_AVERAGE_COUNT;
+            Hal_Aux_AdcValueGet(&ulAdcValue);
+            fAdcSumValue = ulAdcValue;
+
+            BleWifi_Ble_AdvertisingTimeChange(BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_PS_MIN, BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_PS_MAX);
+#if 0
+            for (i = 0 ;i < AverageTimes ;i++)
+            {
+                if (1 != Hal_Aux_AdcValueGet(&ulAdcValue))
+                     return 0;
+
+                fAdcSumValue += (float)ulAdcValue;
+            }
+
+            fAdcSumValue = (fAdcSumValue / AverageTimes);
+#endif
+
+#ifdef CAL_DEBUG
+            msg_print_uart1("ADC [%f]\n",fAdcSumValue);
+#endif
+
+            if (MW_FIM_OK != MwFim_FileRead(MW_FIM_IDX_GP12_PROJECT_DC_SLOPE, 0, MW_FIM_GP12_DC_SLOPE_SIZE, (uint8_t*)&DCSlope))
+            {
+                // if fail, return fail
+                goto done;
+            }
+
+            // Calculate DC and Slope
+            DCSlope.fVoltage[Index-1] = fVoltage;
+            DCSlope.fADC[Index-1] = fAdcSumValue;
+
+#ifdef CAL_DEBUG
+            msg_print_uart1("DC %f  voltage %f\n", DCSlope.fADC[Index-1], DCSlope.fVoltage[Index-1]);
+#endif
+
+            if (Index == 2)
+            {
+                DCSlope.fSlope = (((DCSlope.fVoltage[0]/2000.0) - (DCSlope.fVoltage[1]/2000.0)) / ((DCSlope.fADC[0]) - (DCSlope.fADC[1])));
+                DCSlope.DC = (int)(DCSlope.fADC[0] - ((DCSlope.fVoltage[0]/2000.0) / DCSlope.fSlope));
+
+#ifdef CAL_DEBUG
+                msg_print_uart1("Slope [%f], DC = [%d]\n",DCSlope.fSlope, DCSlope.DC);
+#endif
+
+                // Calibration data
+                g_tHalAux_CalData.fSlopeIo = DCSlope.fSlope;
+                g_tHalAux_CalData.wDcOffsetIo = DCSlope.DC;
+            }
+
+            if (MW_FIM_OK != MwFim_FileWrite(MW_FIM_IDX_GP12_PROJECT_DC_SLOPE, 0, MW_FIM_GP12_DC_SLOPE_SIZE, (uint8_t*)&DCSlope))
+            {
+                // if fail, return fail
+                goto done;
+            }
+
+            break;
+        }
+
+        default:
+            goto done;
+    }
+
+    iRet = 1;
+
+done:
+    if(iRet)
+    {
+        msg_print_uart1("AT+CALIBRATION=OK\r\n");
+    }
+    else
+    {
+        msg_print_uart1("AT+CALIBRATION=ERROR\r\n");
+    }
+
+    return iRet;
+
+}
+
+
+
 at_command_t g_taAppAtCmd[] =
 {
     { "at+readfim",     app_at_cmd_sys_read_fim,    "Read FIM data" },
     { "at+writefim",    app_at_cmd_sys_write_fim,   "Write FIM data" },
     { "at+dtim",        app_at_cmd_sys_dtim_time,   "Wifi DTIM" },
     { "at+alicfg",      app_at_cmd_sys_ali_cfg,     "Aliyun Configuration" },
-    
+    { "at+calibration", app_at_cmd_sys_voltage_offset,     "Voltage Offset" },
+    { "at+getvoltage",  app_at_cmd_sys_get_voltage,        "Get Voltage" },    
 #if (WIFI_OTA_FUNCTION_EN == 1)
     { "at+ota",         app_at_cmd_sys_do_wifi_ota, "Do Wifi OTA" },
 #endif

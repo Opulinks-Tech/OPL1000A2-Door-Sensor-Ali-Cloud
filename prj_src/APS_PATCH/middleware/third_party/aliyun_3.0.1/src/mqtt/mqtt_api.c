@@ -44,7 +44,7 @@
 #endif
 
 static void        *g_mqtt_client = NULL;
-iotx_sign_mqtt_t    g_default_sign;
+SHM_DATA iotx_sign_mqtt_t    g_default_sign;
 #ifdef SUPPORT_TLS    
 static char         iotx_ca_crt_itls[IOTX_PRODUCT_KEY_LEN + IOTX_PRODUCT_SECRET_LEN + 2] = {0};
 #endif
@@ -383,7 +383,7 @@ void iotx_conn_info_release(void)
 }
 
 /************************  Public Interface ************************/
-void *IOT_MQTT_Construct(iotx_mqtt_param_t *pInitParams)
+SHM_DATA void *IOT_MQTT_Construct(iotx_mqtt_param_t *pInitParams)
 {
     void *pclient;
     iotx_dev_meta_info_t meta_info;

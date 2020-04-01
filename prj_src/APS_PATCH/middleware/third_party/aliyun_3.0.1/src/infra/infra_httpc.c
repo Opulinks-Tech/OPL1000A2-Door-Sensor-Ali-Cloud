@@ -224,8 +224,15 @@ static int _http_recv(httpclient_t *client, char *buf, int max_len, int *p_read_
     }
 }
 
+#if 1
+// 10 seconds
+#define MIN_TIMEOUT (100)
+#define MAX_RETRY_COUNT (50)
+#else
+// 2 minutes
 #define MIN_TIMEOUT (100)
 #define MAX_RETRY_COUNT (600)
+#endif
 
 
 static int _utils_check_deadloop(int len, iotx_time_t *timer, int ret, unsigned int *dead_loop_count,
@@ -379,9 +386,17 @@ static int _http_parse_response_header(httpclient_t *client, char *data, int len
     while (NULL == (ptr_body_end = strstr(data, "\r\n\r\n"))) {
         /* try to read more header */
         ret = _http_recv(client, data + len, HTTPCLIENT_RAED_HEAD_SIZE, &new_trf_len, iotx_time_left(&timer));
+
+        #if 1
+        if (ret) {
+            return ret;
+        }
+        #else
         if (ret == ERROR_HTTP_CONN) {
             return ret;
         }
+        #endif
+        
         len += new_trf_len;
         data[len] = '\0';
     }

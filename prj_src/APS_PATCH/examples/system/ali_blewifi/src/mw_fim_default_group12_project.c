@@ -33,25 +33,6 @@ Declaration of data structure
 Declaration of Global Variables & Functions
 ********************************************/
 // Sec 4: declaration of global variable
-
-const T_MwFim_GP12_HttpPostContent g_tMwFimDefaultGp12HttpPostContent  =
-{
-    .ubaApiKey             = APIKEY,
-    .ubaDeviceId           = DEVICE_ID,
-    .ubaChipId             = CHIP_ID,
-    .ubaModelId            = MODEL_ID,
-};
-// the address buffer of Http Post Content
-uint32_t g_ulaMwFimAddrBufferGp12HttpPostContent[MW_FIM_GP12_HTTP_POST_CONTENT_NUM];
-
-const T_MwFim_GP12_HttpHostInfo g_tMwFimDefaultGp12HttpHostInfo  =
-{
-    .ubaHostInfoURL             = HOSTINFO_URL,
-    .ubaHostInfoDIR             = HOSTINFO_DIR,
-};
-// the address buffer of Http Post Content
-uint32_t g_ulaMwFimAddrBufferGp12HttpHostInfo[MW_FIM_GP12_HTTP_HOST_INFO_NUM];
-
 const T_MwFim_GP12_VoltageOffset g_tMwFimDefaultGp12VoltageOffset  =
 {
     .fVoltageOffset           = VOLTAGE_OFFSET,
@@ -73,8 +54,6 @@ uint32_t g_ulaMwFimAddrBufferGp12DCSlope[MW_FIM_GP12_DC_SLOPE_NUM];
 // the information table of group 12
 const T_MwFimFileInfo g_taMwFimGroupTable12_project[] =
 {
-    {MW_FIM_IDX_GP12_PROJECT_DEVICE_AUTH_CONTENT,   MW_FIM_GP12_HTTP_POST_CONTENT_NUM,      MW_FIM_GP12_HTTP_POST_CONTENT_SIZE,     (uint8_t*)&g_tMwFimDefaultGp12HttpPostContent,      g_ulaMwFimAddrBufferGp12HttpPostContent},
-    {MW_FIM_IDX_GP12_PROJECT_HOST_INFO,             MW_FIM_GP12_HTTP_HOST_INFO_NUM,         MW_FIM_GP12_HTTP_HOST_INFO_SIZE,        (uint8_t*)&g_tMwFimDefaultGp12HttpHostInfo,         g_ulaMwFimAddrBufferGp12HttpHostInfo},
     {MW_FIM_IDX_GP12_PROJECT_VOLTAGE_OFFSET,        MW_FIM_GP12_VOLTAGE_OFFSET_NUM,         MW_FIM_GP12_VOLTAGE_OFFSET_SIZE,        (uint8_t*)&g_tMwFimDefaultGp12VoltageOffset,         g_ulaMwFimAddrBufferGp12VoltageOffset},
     {MW_FIM_IDX_GP12_PROJECT_DC_SLOPE,              MW_FIM_GP12_DC_SLOPE_NUM,               MW_FIM_GP12_DC_SLOPE_SIZE,              (uint8_t*)&g_tMwFimDefaultGp12DCSlope,              g_ulaMwFimAddrBufferGp12DCSlope},
 

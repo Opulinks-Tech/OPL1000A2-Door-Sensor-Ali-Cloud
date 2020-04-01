@@ -92,7 +92,7 @@ static int iotx_mc_set_connect_params(iotx_mc_client_t *pClient, MQTTPacket_conn
 }
 
 /* set state of MQTT client */
-/*static */void iotx_mc_set_client_state(iotx_mc_client_t *pClient, iotx_mc_state_t newState)
+void iotx_mc_set_client_state(iotx_mc_client_t *pClient, iotx_mc_state_t newState)
 {
     HAL_MutexLock(pClient->lock_generic);
     pClient->client_state = newState;
@@ -824,7 +824,7 @@ static int _mqtt_connect(void *client)
     iotx_mc_set_client_state(pClient, IOTX_MC_STATE_CONNECTED);
 
     //utils_time_countdown_ms(&pClient->next_ping_time, pClient->connect_data.keepAliveInterval * 1000);
-    utils_time_countdown_ms(&pClient->next_ping_time, ALI_KEEPALIVE_INTERVAL);
+    utils_time_countdown_ms(&pClient->next_ping_time, ALI_KEEPALIVE_INTERVAL * 2);
 
     mqtt_info("mqtt connect success!");
     return SUCCESS_RETURN;
@@ -1580,6 +1580,7 @@ static int iotx_mc_cycle(iotx_mc_client_t *c, iotx_time_t *timer)
         case PINGRESP: {
             rc = SUCCESS_RETURN;
             mqtt_info("receive ping response!");
+            printf("\n\nreceive ping response\n\n");
             break;
         }
         default:
@@ -1656,6 +1657,8 @@ static int MQTTKeepalive(iotx_mc_client_t *pClient)
         HAL_MutexUnlock(pClient->lock_write_buf);
         return FAIL_RETURN;
     }
+
+    printf("\n\nMQTTSerialize_pingreq\n\n");
 
     len = MQTTSerialize_pingreq((unsigned char *)pClient->buf_send, pClient->buf_size_send);
     mqtt_debug("len = MQTTSerialize_pingreq() = %d", len);
@@ -2740,7 +2743,7 @@ int wrapper_mqtt_connect(void *client)
     return rc;
 }
 
-int wrapper_mqtt_release(void **c)
+SHM_DATA int wrapper_mqtt_release(void **c)
 {
     iotx_mc_client_t *pClient;
 #ifdef PLATFORM_HAS_DYNMEM
@@ -2894,7 +2897,7 @@ int wrapper_mqtt_subscribe(void *client,
     return msgId;
 }
 
-int wrapper_mqtt_subscribe_sync(void *c,
+SHM_DATA int wrapper_mqtt_subscribe_sync(void *c,
                                 const char *topic_filter,
                                 iotx_mqtt_qos_t qos,
                                 iotx_mqtt_event_handle_func_fpt topic_handle_func,

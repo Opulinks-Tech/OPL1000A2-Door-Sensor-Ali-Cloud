@@ -24,6 +24,7 @@
 #include "lwip_helper.h"
 #include "sys_common_api.h"
 #include "lwip/etharp.h"
+#include "infra_config.h"
 
 #ifdef __BLEWIFI_TRANSPARENT__
 #include "at_cmd_app_patch.h"
@@ -37,7 +38,7 @@ extern breeze_apinfo_t g_apInfo;
 //extern uint8_t g_Ali_wifi_provision;
 #endif
 
-wifi_config_t wifi_config_req_connect;
+SHM_DATA wifi_config_t wifi_config_req_connect;
 uint32_t g_ulBleWifi_Wifi_BeaconTime;
 
 static int BleWifi_Wifi_EventHandler_Start(wifi_event_id_t event_id, void *data, uint16_t length);

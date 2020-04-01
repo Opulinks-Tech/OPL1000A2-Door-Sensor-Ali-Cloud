@@ -55,10 +55,10 @@ typedef unsigned char uint8_t;
 //#define ALCS_ENABLED
 #define HAL_KV
 
-//#define OTA_ENABLED
-#if defined(WORLDWIDE_USE) || defined(OTA_ENABLED)
+#define OTA_ENABLED
+//#if defined(WORLDWIDE_USE) || defined(OTA_ENABLED)
 #define SUPPORT_TLS
-#endif
+//#endif
 
 #define HAL_CRYPTO
 #define HAL_UDP
@@ -79,13 +79,9 @@ typedef unsigned char uint8_t;
 #endif
 
 #define ALI_SINGLE_TASK
-
 #define ALI_TASK_POLLING_PERIOD     (10) // ms
-
 //#define ALI_RHYTHM_SUPPORT
-
 #define ALI_APP_TOKEN_BACKUP
-
 #define ALI_KEEPALIVE_INTERVAL      (120000) // ms
 
 #define ALI_IOT_RX_DELAY_MAX        (2000) // ms
@@ -95,9 +91,13 @@ typedef unsigned char uint8_t;
 #define ALI_UNBIND_REFINE
 #endif
 
+#ifdef SUPPORT_TLS
+#define ALI_HTTP_COMPATIBLE
+#endif
+
 #define timer_dbg           printf
 //#define timer_dbg(...)
 
-//#define SHM_DATA    __attribute__((section("SHM_REGION")))
+#define SHM_DATA    __attribute__((section("SHM_REGION")))
 
 #endif
