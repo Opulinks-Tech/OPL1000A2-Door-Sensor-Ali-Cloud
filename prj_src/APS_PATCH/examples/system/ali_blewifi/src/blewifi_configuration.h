@@ -232,8 +232,8 @@ Define the moving average count for temperature and VBAT
 /*
 Define Maximum Voltage & Minimum Voltage
 */
-#define MAXIMUM_VOLTAGE_DEF     (1.5f)    //(3.0f)
-#define MINIMUM_VOLTAGE_DEF     (0.75f)    //(1.5f)
+#define MAXIMUM_VOLTAGE_DEF     (5.0f)    //(3.0f)
+#define MINIMUM_VOLTAGE_DEF     (0.0f)    //(1.5f)
 #define VOLTAGE_OFFSET          (0.19f)
 
 /*

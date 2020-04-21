@@ -1627,7 +1627,9 @@ void UpdateBatteryContent(void)
     // fVBatPercentage need multiple 2 then add voltage offset (fVoltageOffset)
 #if 0    
     g_fBatteryVoltage = (fVBatVoltage * 2);
-#endif
+#else
+    g_fBatteryVoltage = fVBatVoltage;
+#endif    
     
     g_fBatteryVoltagePercentage = ((fVBatVoltage - MINIMUM_VOLTAGE_DEF)/(MAXIMUM_VOLTAGE_DEF - MINIMUM_VOLTAGE_DEF))*100;
 }

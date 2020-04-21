@@ -382,8 +382,11 @@ void user_post_property(IoT_Properity_t *ptProp)
             {
                 u8FirstItemDone = 1;
             }
-            u32Offset += snprintf(ps8Buf + u32Offset, u32BufSize - u32Offset, "\"BatteryPercentage\":{\"value\":%.2f,\"time\":%u}", 
-                                  ptProp->tDoorStatus.fBatteryVoltagePercentage, u32TimeStamp);
+//            u32Offset += snprintf(ps8Buf + u32Offset, u32BufSize - u32Offset, "\"BatteryPercentage\":{\"value\":%.2f,\"time\":%u}", 
+//                                  ptProp->tDoorStatus.fBatteryVoltagePercentage, u32TimeStamp);
+//            
+            u32Offset += snprintf(ps8Buf + u32Offset, u32BufSize - u32Offset, "\"CurrentVoltage\":{\"value\":%.2f,\"time\":%u}", 
+                                  ptProp->tDoorStatus.fBatteryVoltage, u32TimeStamp);
             u8FirstItemDone = 1;
         }
 
