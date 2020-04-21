@@ -52,7 +52,7 @@ typedef struct {
     #define CUSTOME_DOMAIN_HTTP     "iot-auth.cn-shanghai.aliyuncs.com"
 #endif
 
-#define USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS (2000)
+#define USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS (2000) //modify to 3000
 #define USER_EXAMPLE_YIELD_TIMEOUT_MIN_MS (100)
 
 #define EXAMPLE_TRACE(...)                               \

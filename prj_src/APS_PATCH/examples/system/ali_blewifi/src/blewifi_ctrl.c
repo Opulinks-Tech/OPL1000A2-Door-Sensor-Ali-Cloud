@@ -49,6 +49,7 @@
 #include "driver_netlink.h"
 #include "lwip/etharp.h"
 #include "mqtt_wrapper.h"
+#include "blewifi_configuration.h"
 
 #ifdef ALI_BLE_WIFI_PROVISION
 #include "awss_notify.h"
@@ -1033,7 +1034,7 @@ void door_status_post(uint8_t u8TrigType)
     //if (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_GOT_IP))
     {
        // Update Battery voltage for post data
-        UpdateBatteryContent();
+//        UpdateBatteryContent(); //Kevin move it to post_property
     }
 
     tProp.u8Type = DEV_IND_TYPE_DOOR_STATUS;
@@ -1618,17 +1619,16 @@ void BleWifi_Ctrl_DoorInit(void)
 
 void UpdateBatteryContent(void)
 {
-    int i = 0;
+//    int i = 0;
     float fVBatVoltage = 0;
 
-    // Partial voltage must multiple 2 equal to original voltage
-    for (i = 0 ;i < SENSOR_MOVING_AVERAGE_COUNT ;i++)
-    {
-        fVBatVoltage = Sensor_Auxadc_VBat_Get();
-    }
-
+    fVBatVoltage = Sensor_Auxadc_VBat_Get();
+    
     // fVBatPercentage need multiple 2 then add voltage offset (fVoltageOffset)
+#if 0    
     g_fBatteryVoltage = (fVBatVoltage * 2);
+#endif
+    
     g_fBatteryVoltagePercentage = ((fVBatVoltage - MINIMUM_VOLTAGE_DEF)/(MAXIMUM_VOLTAGE_DEF - MINIMUM_VOLTAGE_DEF))*100;
 }
 

@@ -217,6 +217,9 @@ static int user_report_reply_event_handler(const int devid, const int msgid, con
                 EXAMPLE_TRACE("msgid[%d] == prev_post_id[%d]\n", msgid, g_tPrevPostInfo.iId);
 
                 post_info_clear();
+                
+                UpdateBatteryContent();
+//                printf("UpdateBatteryContent()\n");
     
                 post_timing_update(BleWifi_Ctrl_DtimTimeGet(), USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS);
             }
@@ -451,7 +454,9 @@ void user_post_property(IoT_Properity_t *ptProp)
     }
 
     EXAMPLE_TRACE("buf:\n%s\n", ps8Buf);
-
+    
+    post_timing_update(0, USER_EXAMPLE_YIELD_TIMEOUT_MIN_MS);
+    
     res = IOT_Linkkit_Report(user_example_ctx->master_devid, ITM_MSG_POST_PROPERTY,
                              (unsigned char *)ps8Buf, u32Offset);
 
@@ -459,7 +464,7 @@ void user_post_property(IoT_Properity_t *ptProp)
 	
     if(res >= 0)
     {
-        post_timing_update(0, USER_EXAMPLE_YIELD_TIMEOUT_MIN_MS);
+//        post_timing_update(0, USER_EXAMPLE_YIELD_TIMEOUT_MIN_MS);
         post_info_update(res, ps8Buf, u32Offset);
     }
 

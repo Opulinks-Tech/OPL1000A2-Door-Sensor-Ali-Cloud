@@ -204,7 +204,7 @@ IO Configuration
 #if 1
 #define BUTTON_IO_PORT      (GPIO_IDX_04)
 #define MAGNETIC_IO_PORT    (GPIO_IDX_05)
-#define BATTERY_IO_PORT     (GPIO_IDX_07)
+#define BATTERY_IO_PORT     (GPIO_IDX_02)
 #define PER_LED_IO_PORT     (GPIO_IDX_21)
 
 #define PER_DEVICE_IO_PORT  (GPIO_IDX_20) // active high

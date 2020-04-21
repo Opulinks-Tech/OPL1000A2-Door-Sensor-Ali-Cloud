@@ -33,6 +33,8 @@
 #include "mw_fim.h"
 #include "at_cmd_data_process_patch.h"
 #include "mw_fim_default_group21_project.h"
+#include "hal_auxadc_patch.h"
+#include "hal_pin.h"
 
 extern uint32_t g_ulHalAux_AverageCount;
 extern T_HalAuxCalData g_tHalAux_CalData;
@@ -518,10 +520,6 @@ int app_at_cmd_sys_get_voltage(char *buf, int len, int mode)
     float fVBat;
     float fVBatAverage = 0;
 
-#ifdef CAL_DEBUG
-    // For ADC value use
-    uint32_t ulAdcConditionValue;
-#endif
 
     if (!at_cmd_buf_to_argc_argv(buf, &argc, argv, AT_MAX_CMD_ARGS))
     {
@@ -532,25 +530,18 @@ int app_at_cmd_sys_get_voltage(char *buf, int len, int mode)
     {
         case AT_CMD_MODE_READ:
         {
-            BleWifi_Ble_AdvertisingTimeChange(BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_CAL_MIN, BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_CAL_MAX);
+            g_ubHalAux_Pu_WriteDirect = 1;
             g_ulHalAux_AverageCount = AT_AUXADC_IO_VOLTAGE_GET_AVERAGE_COUNT;
+            Hal_Pin_ConfigSet(BATTERY_IO_PORT, PIN_TYPE_GPIO_OUTPUT_HIGH, PIN_DRIVING_FLOAT);
             Hal_Aux_IoVoltageGet(BATTERY_IO_PORT, &fVBat);
+            Hal_Pin_ConfigSet(BATTERY_IO_PORT, PIN_TYPE_NONE, PIN_DRIVING_FLOAT);
+#if 0            
+            fVBatAverage = fVBat+VOLTAGE_COMPENSATION_VALUE;
+#else
             fVBatAverage = fVBat;
+#endif            
 			msg_print_uart1("ADC fVBatAverage[%.2f]\n",fVBatAverage);
-#ifdef CAL_DEBUG
-            // Print IO7 ADC value
-            Hal_Pin_ConfigSet(7, PIN_TYPE_AUX_7, PIN_DRIVING_FLOAT);
-            if (1 != Hal_Aux_SourceSelect(HAL_AUX_SRC_GPIO, 7))
-                return 0;
-
-            if (1 != Hal_Aux_AdcValueGet(&ulAdcConditionValue))
-                 return 0;
-
-            msg_print_uart1("ADC [%d]\n",ulAdcConditionValue);
-#endif
-            BleWifi_Ble_AdvertisingTimeChange(BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_PS_MIN, BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_PS_MAX);
-            // fVBatPercentage need multiple 2 then add voltage offset (fVoltageOffset)
-            fVBatAverage = (fVBatAverage * 2);
+            g_ubHalAux_Pu_WriteDirect = 0;
 
             break;
         }

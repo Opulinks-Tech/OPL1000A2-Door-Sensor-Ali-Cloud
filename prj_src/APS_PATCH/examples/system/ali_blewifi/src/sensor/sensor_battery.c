@@ -16,21 +16,29 @@
 #include "hal_vic.h"
 #include "sensor_battery.h"
 #include "mw_fim_default_group12_project.h"
+#include "hal_auxadc_patch.h"
+#include "hal_pin.h"
+#include "hal_pin_def.h"
 
 extern uint32_t g_ulHalAux_AverageCount;
 
 Sensor_Battery_t BatteryVoltage;
 
 #define SENSOR_AUXADC_IO_VOLTAGE_GET_AVERAGE_COUNT    (30)
-
 float Sensor_Auxadc_VBat_Convert_to_Percentage(void)
 {
     float fVBat;
     float fAverageVBat;
 
     g_ulHalAux_AverageCount = SENSOR_AUXADC_IO_VOLTAGE_GET_AVERAGE_COUNT;
+    Hal_Pin_ConfigSet(BATTERY_IO_PORT, PIN_TYPE_GPIO_OUTPUT_HIGH, PIN_DRIVING_FLOAT);
     Hal_Aux_IoVoltageGet(BATTERY_IO_PORT, &fVBat);
+    Hal_Pin_ConfigSet(BATTERY_IO_PORT, PIN_TYPE_NONE, PIN_DRIVING_FLOAT);
 
+#if 0    
+    fVBat+=VOLTAGE_COMPENSATION_VALUE;
+#endif
+    
     if (fVBat > MAXIMUM_VOLTAGE_DEF)
         fVBat = MAXIMUM_VOLTAGE_DEF;
     if (fVBat < MINIMUM_VOLTAGE_DEF)
@@ -67,7 +75,14 @@ float Sensor_Auxadc_VBat_Get(void)
     float fAverageVBat;
 
     g_ulHalAux_AverageCount = SENSOR_AUXADC_IO_VOLTAGE_GET_AVERAGE_COUNT;
+    Hal_Pin_ConfigSet(BATTERY_IO_PORT, PIN_TYPE_GPIO_OUTPUT_HIGH, PIN_DRIVING_FLOAT);
     Hal_Aux_IoVoltageGet(BATTERY_IO_PORT, &fVBat);
+    Hal_Pin_ConfigSet(BATTERY_IO_PORT, PIN_TYPE_NONE, PIN_DRIVING_FLOAT);
+ 
+#if 0    
+    fVBat+=VOLTAGE_COMPENSATION_VALUE; //Modify new method
+    printf("voltage=%.2f\n", fVBat);
+#endif    
 
     if (fVBat > MAXIMUM_VOLTAGE_DEF)
         fVBat = MAXIMUM_VOLTAGE_DEF;

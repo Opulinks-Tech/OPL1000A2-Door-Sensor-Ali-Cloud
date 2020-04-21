@@ -33,6 +33,7 @@
 #include "at_cmd_task_patch.h"
 #include "at_cmd_common.h"
 #include "mw_ota.h"
+#include "hal_auxadc_patch.h"
 
 #ifdef ALI_BLE_WIFI_PROVISION
 #include "cmsis_os.h"
@@ -129,6 +130,9 @@ void BleWifiAppInit(void)
     // only for the user mode
     if ((tSysMode.ubSysMode == MW_FIM_SYS_MODE_INIT) || (tSysMode.ubSysMode == MW_FIM_SYS_MODE_USER))
     {
+        /* Aux ADC calibration Initialization */
+        Hal_Aux_AdcCal_Init();
+
         /* Wi-Fi Initialization */
         BleWifi_Wifi_Init();
 
