@@ -25,5 +25,5 @@ void lwip_module_interface_init_patch(void)
     lwip_load_interface_lwip_helper_patch();
     lwip_load_interface_tcp_patch();
     lwip_load_interface_dhcp_patch();
-    lwip_load_interface_etharp_patch();
+//    lwip_load_interface_etharp_patch();
 }
