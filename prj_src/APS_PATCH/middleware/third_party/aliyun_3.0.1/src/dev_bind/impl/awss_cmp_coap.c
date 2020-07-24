@@ -17,6 +17,7 @@ static void *g_coap_ctx = NULL;
 
 int awss_release_coap_ctx(void *session)
 {
+#if 0    
     struct coap_session_ctx_t *ctx = (struct coap_session_ctx_t *)session;
     if (ctx == NULL) {
         return 0;
@@ -33,11 +34,13 @@ int awss_release_coap_ctx(void *session)
         HAL_Free(ctx->remote);
     }
     HAL_Free(ctx);
+#endif    
     return 0;
 }
 
 void *awss_cpy_coap_ctx(void *request, void *remote, char mcast)
 {
+#if 0    
     struct coap_session_ctx_t *ctx = os_zalloc_(sizeof(struct coap_session_ctx_t));
     if (ctx == NULL) {
         goto CPY_CTX_FAIL;
@@ -81,20 +84,26 @@ void *awss_cpy_coap_ctx(void *request, void *remote, char mcast)
 CPY_CTX_FAIL:
     awss_release_coap_ctx(ctx);
     return NULL;
+#endif
+    return 0;
 }
 
 uint8_t awss_cmp_get_coap_code(void *request)
 {
+#if 0     
     struct CoAPMessage *msg = NULL;
     if (request == NULL) {
         return 0x60;
     }
     msg = (struct CoAPMessage *)request;
     return msg->header.code;
+#endif
+    return 0;    
 }
 
 char *awss_cmp_get_coap_payload(void *request, int *payload_len)
 {
+#if 0     
     struct CoAPMessage *msg = (struct CoAPMessage *)request;
     if (request == NULL) {
         return NULL;
@@ -105,10 +114,13 @@ char *awss_cmp_get_coap_payload(void *request, int *payload_len)
         *payload_len = msg->payloadlen;
     }
     return (char *)msg->payload;
+#endif
+    return 0;    
 }
 
 int awss_cmp_coap_register_cb(char *topic, void *cb)
 {
+#if 0    
     if (g_coap_ctx == NULL) {
         g_coap_ctx = (void *)CoAPServer_init();
     }
@@ -121,19 +133,24 @@ int awss_cmp_coap_register_cb(char *topic, void *cb)
     }
 
     CoAPServer_register(g_coap_ctx, (const char *)topic, (CoAPRecvMsgHandler)cb);
+#endif    
     return 0;
 }
 
 int awss_cmp_coap_cancel_packet(uint16_t msgid)
 {
+#if 0
     if (g_coap_ctx == NULL) {
         return -1;
     }
     return CoAPMessageId_cancel(g_coap_ctx, msgid);
+#endif
+    return 0;     
 }
 
 int awss_cmp_coap_send(void *buf, uint32_t len, void *sa, const char *uri, void *cb, uint16_t *msgid)
 {
+#if 0    
     if (g_coap_ctx == NULL) {
         g_coap_ctx = (void *)CoAPServer_init();
     } else {
@@ -141,35 +158,45 @@ int awss_cmp_coap_send(void *buf, uint32_t len, void *sa, const char *uri, void 
     }
     return CoAPServerMultiCast_send(g_coap_ctx, (NetworkAddr *)sa, uri, (uint8_t *)buf,
                                     (uint16_t)len, (CoAPSendMsgHandler)cb, msgid);
+#endif
+    return 0;    
 }
 
 int awss_cmp_coap_send_resp(void *buf, uint32_t len, void *sa, const char *uri, void *req, void *cb, uint16_t *msgid, char qos)
 {
+#if 0     
     if (g_coap_ctx == NULL) {
         g_coap_ctx = (void *)CoAPServer_init();
     }
 
     return CoAPServerResp_send(g_coap_ctx, (NetworkAddr *)sa, (uint8_t *)buf, (uint16_t)len, req, uri, (CoAPSendMsgHandler)cb, msgid, qos);
+#endif
+    return 0;     
+    
 }
 
 int awss_cmp_coap_ob_send(void *buf, uint32_t len, void *sa, const char *uri, void *cb)
 {
+#if 0    
     if (g_coap_ctx == NULL) {
         g_coap_ctx = (void *)CoAPServer_init();
     }
 
     return CoAPObsServer_notify(g_coap_ctx, uri, (uint8_t *)buf, (uint16_t)len, (CoAPDataEncrypt)cb);
+#endif
+    return 0;    
 }
 
 int awss_cmp_coap_deinit()
 {
+#if 0    
     void *coap_ctx = g_coap_ctx;
     g_coap_ctx = NULL;
 
     if (coap_ctx) {
         CoAPServer_deinit(coap_ctx);
     }
-
+#endif
     return 0;
 }
 
@@ -205,8 +232,8 @@ int awss_cmp_local_init(int init_stage)
             continue;
         }
         memset(topic, 0, sizeof(topic));
-        awss_build_topic(awss_local_couple[i].topic, topic, TOPIC_LEN_MAX);
-        awss_cmp_coap_register_cb(topic, awss_local_couple[i].cb);
+        awss_build_topic(awss_local_couple[i].topic, topic, TOPIC_LEN_MAX);        
+        awss_cmp_coap_register_cb(topic, awss_local_couple[i].cb);        
     }
 
     return 0;
@@ -223,8 +250,8 @@ int awss_cmp_local_deinit(int force)
 #endif
     awss_suc_notify_stop();
 #endif
-    if (force) {
-        awss_cmp_coap_deinit();
+    if (force) {        
+        awss_cmp_coap_deinit();        
     }
 
     return 0;

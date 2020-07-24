@@ -592,18 +592,18 @@ int ali_linkkit_init(user_example_ctx_t *user_example_ctx)
 					
 					
     /* Choose Login Server, domain should be configured before IOT_Linkkit_Open() */
-#if USE_CUSTOME_DOMAIN
-    IOT_Ioctl(IOTX_IOCTL_SET_MQTT_DOMAIN, (void *)CUSTOME_DOMAIN_MQTT);
-    IOT_Ioctl(IOTX_IOCTL_SET_HTTP_DOMAIN, (void *)CUSTOME_DOMAIN_HTTP);
-#else
-#ifdef WORLDWIDE_USE
-    int domain_type = IOTX_CLOUD_REGION_SINGAPORE;
-#else
-    int domain_type = IOTX_CLOUD_REGION_SHANGHAI;
-#endif    
-    
-    IOT_Ioctl(IOTX_IOCTL_SET_DOMAIN, (void *)&domain_type);
-#endif
+//#if USE_CUSTOME_DOMAIN
+//    IOT_Ioctl(IOTX_IOCTL_SET_MQTT_DOMAIN, (void *)CUSTOME_DOMAIN_MQTT);
+//    IOT_Ioctl(IOTX_IOCTL_SET_HTTP_DOMAIN, (void *)CUSTOME_DOMAIN_HTTP);
+//#else
+//#ifdef WORLDWIDE_USE
+//    int domain_type = IOTX_CLOUD_REGION_SINGAPORE;
+//#else
+//    int domain_type = IOTX_CLOUD_REGION_SHANGHAI;
+//#endif    
+//    
+//    IOT_Ioctl(IOTX_IOCTL_SET_DOMAIN, (void *)&domain_type);
+//#endif
 					
     /* Choose Login Method */
     int dynamic_register = 0;

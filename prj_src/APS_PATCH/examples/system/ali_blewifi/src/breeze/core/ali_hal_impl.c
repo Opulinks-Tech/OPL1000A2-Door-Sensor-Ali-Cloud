@@ -10,20 +10,20 @@
 ******************************************************************************/
 #include "ali_hal_decl.h"
 #include "wrappers_defs.h"
-#include "mw_fim_default_group21_project.h"
+#include "mw_fim_default_group13_project.h"
 
 #define __DEMO__
 
 
 
 void Ali_Hal_Devive_init(){
-    T_MwFim_GP21_AliyunDevice AliyunDevice;
+    T_MwFim_GP13_AliyunDevice AliyunDevice;
 	
     // get the settings of power saving
-    if (MW_FIM_OK != MwFim_FileRead(MW_FIM_IDX_GP21_PROJECT_ALIYUN_DEVICE, 0, MW_FIM_GP21_ALIYUN_DEVICE_SIZE, (uint8_t*)&AliyunDevice))
+    if (MW_FIM_OK != MwFim_FileRead(MW_FIM_IDX_GP13_PROJECT_ALIYUN_DEVICE, 0, MW_FIM_GP13_ALIYUN_DEVICE_SIZE, (uint8_t*)&AliyunDevice))
     {
         // if fail, get the default value
-        memcpy(&AliyunDevice, &g_tMwFimDefaultGp21AliyunDevice, MW_FIM_GP21_ALIYUN_DEVICE_SIZE);
+        memcpy(&AliyunDevice, &g_tMwFimDefaultGp13AliyunDevice, MW_FIM_GP13_ALIYUN_DEVICE_SIZE);
     }
     
     HAL_SetProductKey(AliyunDevice.ubaProductKey);

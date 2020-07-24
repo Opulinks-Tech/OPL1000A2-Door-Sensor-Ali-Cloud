@@ -442,8 +442,8 @@ int online_get_device_info(void *ctx, void *resource, void *remote, void *reques
      * if cloud is not ready, don't response token
      */
 #ifdef DEVICE_MODEL_ENABLED
-    extern int awss_check_reset();
-    if(awss_check_reset()) {
+    extern int awss_check_reset(iotx_vendor_dev_reset_type_t *reset_type);
+    if(awss_check_reset(NULL)) {
         goto done;
     }
 #endif

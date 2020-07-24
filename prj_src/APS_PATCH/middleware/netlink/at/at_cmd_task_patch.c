@@ -269,8 +269,8 @@ done:
 
 void at_task_func_init_patch(void)
 {
-    at_blewifi_auto_trans_init       = at_blewifi_auto_trans_init_patch;
-    at_module_init                   = at_module_init_patch;
+//    at_blewifi_auto_trans_init       = at_blewifi_auto_trans_init_patch;
+//    at_module_init                   = at_module_init_patch;
     at_task                          = at_task_patch;
     at_cmd_crlf_term_set             = at_cmd_crlf_term_set_patch;
     at_cmd_crlf_term_get             = at_cmd_crlf_term_get_patch;

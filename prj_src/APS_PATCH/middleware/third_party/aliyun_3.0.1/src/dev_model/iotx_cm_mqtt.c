@@ -245,6 +245,8 @@ static int  _mqtt_connect(uint32_t timeout)
         if (0 == IOT_SetupConnInfo(product_key, device_name, device_secret, (void **)&pconn_info)) {
             mqtt_param->port = pconn_info->port;
             mqtt_param->host = pconn_info->host_name;
+//            printf("\n\nxxxxxhost_name=%s\n", mqtt_param->host);
+//            printf("\n\nxxxxxhost_name=%s\n", pconn_info->host_name);
             mqtt_param->client_id = pconn_info->client_id;
             mqtt_param->username = pconn_info->username;
             mqtt_param->password = pconn_info->password;

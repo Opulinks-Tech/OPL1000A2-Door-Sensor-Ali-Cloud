@@ -171,6 +171,7 @@ static uint8_t utils_crc8(uint8_t *buf, uint16_t length)
 }
 
 SHM_DATA char kv_buffer[KV_TOTAL_SIZE+512];
+//char kv_buffer[KV_TOTAL_SIZE+512];
 
 static int raw_read(uint32_t offset, void *buf, size_t nbytes)
 {

@@ -29,6 +29,7 @@ int CoAPPathMD5_sum(const char *path, int len, char outbuf[], int outlen)
 
 int CoAPResource_init(CoAPContext *context, int res_maxcount)
 {
+#if 0    
     CoAPIntContext *ctx = (CoAPIntContext *)context;
 
     ctx->resource.list_mutex = HAL_MutexCreate();
@@ -38,12 +39,13 @@ int CoAPResource_init(CoAPContext *context, int res_maxcount)
     ctx->resource.count = 0;
     ctx->resource.maxcount = res_maxcount;
     HAL_MutexUnlock(ctx->resource.list_mutex);
-
+#endif
     return COAP_SUCCESS;
 }
 
 int CoAPResource_deinit(CoAPContext *context)
 {
+#if 0    
     CoAPResource *node = NULL, *next = NULL;
     CoAPIntContext *ctx = (CoAPIntContext *)context;
     char            tmpbuf[2 * COAP_MAX_PATH_CHECKSUM_LEN + 1] = {0};
@@ -64,6 +66,7 @@ int CoAPResource_deinit(CoAPContext *context)
 
     HAL_MutexDestroy(ctx->resource.list_mutex);
     ctx->resource.list_mutex = NULL;
+#endif    
     return COAP_SUCCESS;
 }
 

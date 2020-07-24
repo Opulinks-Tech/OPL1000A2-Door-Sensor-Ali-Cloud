@@ -32,6 +32,7 @@
 #include "hal_system.h"
 #include "mw_fim_default_group03.h"
 #include "mw_fim_default_group03_patch.h"
+#include "mw_fim_default_group13_project.h"
 #include "at_cmd_common.h"
 
 #define HI_UINT16(a) (((a) >> 8) & 0xFF)
@@ -67,9 +68,10 @@ static void BleWifi_Ble_ProtocolHandler_HttpOtaTrig(uint16_t type, uint8_t *data
 static void BleWifi_Ble_ProtocolHandler_HttpOtaDeviceVersion(uint16_t type, uint8_t *data, int len);
 static void BleWifi_Ble_ProtocolHandler_HttpOtaServerVersion(uint16_t type, uint8_t *data, int len);
 #endif
-
+#if 0
 static void BleWifi_Ble_ProtocolHandler_MpCalVbat(uint16_t type, uint8_t *data, int len);
 static void BleWifi_Ble_ProtocolHandler_MpCalIoVoltage(uint16_t type, uint8_t *data, int len);
+#endif
 static void BleWifi_Ble_ProtocolHandler_MpCalTmpr(uint16_t type, uint8_t *data, int len);
 static void BleWifi_Ble_ProtocolHandler_MpSysModeWrite(uint16_t type, uint8_t *data, int len);
 static void BleWifi_Ble_ProtocolHandler_MpSysModeRead(uint16_t type, uint8_t *data, int len);
@@ -79,6 +81,9 @@ static void BleWifi_Ble_ProtocolHandler_EngWifiMacRead(uint16_t type, uint8_t *d
 static void BleWifi_Ble_ProtocolHandler_EngBleMacWrite(uint16_t type, uint8_t *data, int len);
 static void BleWifi_Ble_ProtocolHandler_EngBleMacRead(uint16_t type, uint8_t *data, int len);
 static void BleWifi_Ble_ProtocolHandler_EngBleCmd(uint16_t type, uint8_t *data, int len);
+static void BleWifi_Ble_ProtocolHandler_EngBleCloudInfoWrite(uint16_t type, uint8_t *data, int len);
+static void BleWifi_Ble_ProtocolHandler_EngBleCloudInfoRead(uint16_t type, uint8_t *data, int len);
+
 static T_BleWifi_Ble_ProtocolHandlerTbl g_tBleProtocolHandlerTbl[] =
 {
     {BLEWIFI_REQ_SCAN,                      BleWifi_Ble_ProtocolHandler_Scan},
@@ -102,20 +107,24 @@ static T_BleWifi_Ble_ProtocolHandlerTbl g_tBleProtocolHandlerTbl[] =
     {BLEWIFI_REQ_HTTP_OTA_DEVICE_VERSION,   BleWifi_Ble_ProtocolHandler_HttpOtaDeviceVersion},
     {BLEWIFI_REQ_HTTP_OTA_SERVER_VERSION,   BleWifi_Ble_ProtocolHandler_HttpOtaServerVersion},
 #endif
-
+#if 0
     {BLEWIFI_REQ_MP_CAL_VBAT,               BleWifi_Ble_ProtocolHandler_MpCalVbat},
     {BLEWIFI_REQ_MP_CAL_IO_VOLTAGE,         BleWifi_Ble_ProtocolHandler_MpCalIoVoltage},
+#endif
     {BLEWIFI_REQ_MP_CAL_TMPR,               BleWifi_Ble_ProtocolHandler_MpCalTmpr},
     {BLEWIFI_REQ_MP_SYS_MODE_WRITE,         BleWifi_Ble_ProtocolHandler_MpSysModeWrite},
     {BLEWIFI_REQ_MP_SYS_MODE_READ,          BleWifi_Ble_ProtocolHandler_MpSysModeRead},
-    
+
     {BLEWIFI_REQ_ENG_SYS_RESET,             BleWifi_Ble_ProtocolHandler_EngSysReset},
     {BLEWIFI_REQ_ENG_WIFI_MAC_WRITE,        BleWifi_Ble_ProtocolHandler_EngWifiMacWrite},
     {BLEWIFI_REQ_ENG_WIFI_MAC_READ,         BleWifi_Ble_ProtocolHandler_EngWifiMacRead},
     {BLEWIFI_REQ_ENG_BLE_MAC_WRITE,         BleWifi_Ble_ProtocolHandler_EngBleMacWrite},
     {BLEWIFI_REQ_ENG_BLE_MAC_READ,          BleWifi_Ble_ProtocolHandler_EngBleMacRead},
     {BLEWIFI_REQ_ENG_BLE_CMD,               BleWifi_Ble_ProtocolHandler_EngBleCmd},
-    
+
+    {BLEWIFI_REQ_ENG_BLE_CLOUD_INFO_WRITE,          BleWifi_Ble_ProtocolHandler_EngBleCloudInfoWrite},
+    {BLEWIFI_REQ_ENG_BLE_CLOUD_INFO_READ,           BleWifi_Ble_ProtocolHandler_EngBleCloudInfoRead},
+
     {0xFFFFFFFF,                            NULL}
 };
 
@@ -168,10 +177,10 @@ static void BleWifi_HandleOtaVersionReq(uint8_t *data, int len)
 	uint16_t cid;
 	uint16_t fid;
 	uint8_t state = MwOta_VersionGet(&pid, &cid, &fid);
-    
+
 	BLEWIFI_INFO("BLEWIFI: BLEWIFI_REQ_OTA_VERSION\r\n");
 
-	if (state != MW_OTA_OK) 
+	if (state != MW_OTA_OK)
 		BleWifi_OtaSendVersionRsp(BLEWIFI_OTA_ERR_HW_FAILURE, 0, 0, 0);
 	else
 		BleWifi_OtaSendVersionRsp(BLEWIFI_OTA_SUCCESS, pid, cid, fid);
@@ -225,20 +234,20 @@ static void BleWifi_HandleOtaUpgradeReq(uint8_t *data, int len)
 	if (ota)
 	{
 		T_MwOtaFlashHeader *ota_hdr= (T_MwOtaFlashHeader*) &data[2];
-		
+
 		ota->pkt_idx = 0;
-		ota->idx     = 0;		
+		ota->idx     = 0;
         ota->rx_pkt  = *(uint16_t *)&data[0];
         ota->proj_id = ota_hdr->uwProjectId;
         ota->chip_id = ota_hdr->uwChipId;
         ota->fw_id   = ota_hdr->uwFirmwareId;
         ota->total   = ota_hdr->ulImageSize;
-        ota->chksum  = ota_hdr->ulImageSum;		
+        ota->chksum  = ota_hdr->ulImageSum;
 		ota->curr 	 = 0;
 
 		state = BleWifi_MwOtaPrepare(ota->proj_id, ota->chip_id, ota->fw_id, ota->total, ota->chksum);
 
-        if (state == MW_OTA_OK) 
+        if (state == MW_OTA_OK)
         {
 	        BleWifi_OtaSendUpgradeRsp(BLEWIFI_OTA_SUCCESS);
 	        gTheOta = ota;
@@ -408,12 +417,12 @@ void BleWifi_Wifi_OtaTrigRsp(uint8_t status)
     BleWifi_Ble_DataSendEncap(BLEWIFI_RSP_HTTP_OTA_TRIG, &status, 1);
 }
 
-void BleWifi_Wifi_OtaDeviceVersionReq(void)        
+void BleWifi_Wifi_OtaDeviceVersionReq(void)
 {
     blewifi_ctrl_http_ota_msg_send(BLEWIFI_CTRL_HTTP_OTA_MSG_DEVICE_VERSION, NULL, 0);
 }
 
-void BleWifi_Wifi_OtaDeviceVersionRsp(uint16_t fid)        
+void BleWifi_Wifi_OtaDeviceVersionRsp(uint16_t fid)
 {
     uint8_t data[2];
     uint8_t *p = (uint8_t *)data;
@@ -440,7 +449,7 @@ void BleWifi_Wifi_OtaServerVersionRsp(uint16_t fid)
     BleWifi_Ble_DataSendEncap(BLEWIFI_RSP_HTTP_OTA_SERVER_VERSION, data, 2);
 }
 #endif /* #if (WIFI_OTA_FUNCTION_EN == 1) */
-
+#if 0
 static void BleWifi_MP_CalVbat(uint8_t *data, int len)
 {
     float fTargetVbat;
@@ -460,7 +469,7 @@ static void BleWifi_MP_CalIoVoltage(uint8_t *data, int len)
     Hal_Aux_IoVoltageCalibration(ubGpioIdx, fTargetIoVoltage);
     BleWifi_Ble_SendResponse(BLEWIFI_RSP_MP_CAL_IO_VOLTAGE, 0);
 }
-
+#endif
 static void BleWifi_MP_CalTmpr(uint8_t *data, int len)
 {
     BleWifi_Ble_SendResponse(BLEWIFI_RSP_MP_CAL_TMPR, 0);
@@ -469,7 +478,7 @@ static void BleWifi_MP_CalTmpr(uint8_t *data, int len)
 static void BleWifi_MP_SysModeWrite(uint8_t *data, int len)
 {
     T_MwFim_SysMode tSysMode;
-    
+
     // set the settings of system mode
     tSysMode.ubSysMode = data[0];
     if (tSysMode.ubSysMode < MW_FIM_SYS_MODE_MAX)
@@ -600,7 +609,7 @@ static void BleWifi_Ble_ProtocolHandler_HttpOtaServerVersion(uint16_t type, uint
     BleWifi_Wifi_OtaServerVersionReq();
 }
 #endif
-
+#if 0
 static void BleWifi_Ble_ProtocolHandler_MpCalVbat(uint16_t type, uint8_t *data, int len)
 {
     BLEWIFI_INFO("BLEWIFI: Recv BLEWIFI_REQ_MP_CAL_VBAT \r\n");
@@ -612,6 +621,7 @@ static void BleWifi_Ble_ProtocolHandler_MpCalIoVoltage(uint16_t type, uint8_t *d
     BLEWIFI_INFO("BLEWIFI: Recv BLEWIFI_REQ_MP_CAL_IO_VOLTAGE \r\n");
     BleWifi_MP_CalIoVoltage(data, len);
 }
+#endif
 
 static void BleWifi_Ble_ProtocolHandler_MpCalTmpr(uint16_t type, uint8_t *data, int len)
 {
@@ -667,6 +677,128 @@ static void BleWifi_Ble_ProtocolHandler_EngBleCmd(uint16_t type, uint8_t *data, 
     BleWifi_Eng_BleCmd(data, len);
 }
 
+void BleWifi_Ble_ProtocolHandler_EngBleCloudInfoWrite(uint16_t type, uint8_t *data, int len)
+{
+    T_MwFim_GP13_AliyunDevice tKeyInfo = {0};
+    uint16_t i = 0;
+    uint8_t u8DelimitersCnt = 0; // The count of ','
+    uint16_t u16StrStartPos = 0;
+    uint16_t u16StrLen = 0;
+
+    if(data == NULL)
+    {
+        BleWifi_Ble_SendResponse(BLEWIFI_RSP_ENG_BLE_CLOUD_INFO_WRITE , 1);
+        return ;
+    }
+
+    for(i = 0 ; i < len ; i++)
+    {
+        if(data[i] == ',')
+        {
+            data[i] = 0;
+            u16StrLen = (i - u16StrStartPos);
+            if(u8DelimitersCnt == 0)
+            {
+                tKeyInfo.ulProductId = strtoul((char *)(data + u16StrStartPos) , NULL , 0);
+            }
+            else if(u8DelimitersCnt == 1)
+            {
+                if(u16StrLen > IOTX_PRODUCT_KEY_LEN)
+                {
+                    BleWifi_Ble_SendResponse(BLEWIFI_RSP_ENG_BLE_CLOUD_INFO_WRITE , 1);
+                    return ;
+                }
+                else
+                {
+                    memcpy(tKeyInfo.ubaProductKey , data + u16StrStartPos , u16StrLen);
+                }
+            }
+            else if(u8DelimitersCnt == 2)
+            {
+                if(u16StrLen > IOTX_PRODUCT_SECRET_LEN)
+                {
+                    BleWifi_Ble_SendResponse(BLEWIFI_RSP_ENG_BLE_CLOUD_INFO_WRITE , 1);
+                    return ;
+                }
+                else
+                {
+                    memcpy(tKeyInfo.ubaProductSecret , data + u16StrStartPos , u16StrLen);
+                }
+            }
+            else if(u8DelimitersCnt == 3)
+            {
+                if(u16StrLen > IOTX_DEVICE_NAME_LEN)
+                {
+                    BleWifi_Ble_SendResponse(BLEWIFI_RSP_ENG_BLE_CLOUD_INFO_WRITE , 1);
+                    return ;
+                }
+                else
+                {
+                    memcpy(tKeyInfo.ubaDeviceName , data + u16StrStartPos , u16StrLen);
+                }
+            }
+            u16StrStartPos = (i + 1);
+            u8DelimitersCnt++;
+        }
+        else if(u8DelimitersCnt == DELIMITER_NUM) // last param
+        {
+            break;
+        }
+    }
+
+    if(u8DelimitersCnt != DELIMITER_NUM)
+    {
+        printf("CloudInfoWrite format err\r\n");
+        BleWifi_Ble_SendResponse(BLEWIFI_RSP_ENG_BLE_CLOUD_INFO_WRITE , 1);
+    }
+
+    //last param handle
+    //if last param need to convert integer , it must special handling. 1. malloc + 1 size , 2. strcpy 3. strtoul
+    u16StrLen = len - u16StrStartPos;
+    if((u16StrLen) > IOTX_DEVICE_SECRET_LEN)
+    {
+        BleWifi_Ble_SendResponse(BLEWIFI_RSP_ENG_BLE_CLOUD_INFO_WRITE , 1);
+    }
+    else
+    {
+        memcpy(tKeyInfo.ubaDeviceSecret , data + u16StrStartPos , u16StrLen);
+    }
+
+    if(MW_FIM_OK != MwFim_FileWrite(MW_FIM_IDX_GP13_PROJECT_ALIYUN_DEVICE, 0, MW_FIM_GP13_ALIYUN_DEVICE_SIZE, (uint8_t*)&tKeyInfo))
+    {
+        printf("WriteDevInfo: Fim Write fail\n");
+        BleWifi_Ble_SendResponse(BLEWIFI_RSP_ENG_BLE_CLOUD_INFO_WRITE , 1);
+        return ;
+    }
+
+    BleWifi_Ble_SendResponse(BLEWIFI_RSP_ENG_BLE_CLOUD_INFO_WRITE , 0);
+}
+
+void BleWifi_Ble_ProtocolHandler_EngBleCloudInfoRead(uint16_t type, uint8_t *data, int len)
+{
+    uint8_t u8RspData[RSP_CLOUD_INFO_READ_PAYLOAD_SIZE] = {0};
+    int16_t s16RspLen = 0;
+    T_MwFim_GP13_AliyunDevice tKeyInfo = {0};
+
+    if(MwFim_FileRead(MW_FIM_IDX_GP13_PROJECT_ALIYUN_DEVICE, 0 , MW_FIM_GP13_ALIYUN_DEVICE_SIZE, (uint8_t*)&tKeyInfo) != MW_FIM_OK)
+    {
+        s16RspLen = 0;
+        BleWifi_Ble_DataSendEncap(BLEWIFI_RSP_ENG_BLE_CLOUD_INFO_READ, u8RspData , s16RspLen);
+        return ;
+    }
+
+    s16RspLen = snprintf((char *)u8RspData , RSP_CLOUD_INFO_READ_PAYLOAD_SIZE , "%lu,%s,%s,%s,%s" ,
+                        tKeyInfo.ulProductId , tKeyInfo.ubaProductKey , tKeyInfo.ubaProductSecret ,
+                        tKeyInfo.ubaDeviceName , tKeyInfo.ubaDeviceSecret);
+
+    if(s16RspLen < 0) //error handle
+    {
+        s16RspLen = 0;
+        memset(&u8RspData , 0 , RSP_CLOUD_INFO_READ_PAYLOAD_SIZE);
+    }
+
+    BleWifi_Ble_DataSendEncap(BLEWIFI_RSP_ENG_BLE_CLOUD_INFO_READ, u8RspData , s16RspLen);
+}
 // it is used in the ctrl task
 void BleWifi_Ble_ProtocolHandler(uint16_t type, uint8_t *data, int len)
 {

@@ -17,6 +17,7 @@
 #include "lwip/errno.h"
 #include "infra_config.h"
 #include "blewifi_configuration.h"
+#include "sys_common_api_patch.h"
 
 #include "cmsis_os.h"
 #include "lwip/netdb.h"
@@ -283,5 +284,8 @@ void BleWifi_RFPowerSetting(uint8_t level)
     tCfg.u8HighPwrStatus = level;
     ret = sys_cfg_rf_init_patch(&tCfg);
     printf("RF Power Settings is = %s \n", (ret == 0 ? "successful" : "false"));
+    
+    ret = sys_set_wifi_lowpower_tx_vdd_rf(BLEWIFI_COM_RF_SMPS_SETTING);
+    printf("SMPS_RF Settings is = %s \n", (ret == 0 ? "successful" : "false"));
 }
 

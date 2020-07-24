@@ -15,11 +15,6 @@
 
 // Common part
 /*
-FIM version
-*/
-#define MW_FIM_VER11_PROJECT            0x08    // 0x00 ~ 0xFF
-
-/*
 Smart sleep
 */
 #define BLEWIFI_COM_POWER_SAVE_EN       (1)     // 1: enable    0: disable
@@ -35,7 +30,8 @@ RF Power
 | WIFI High power |  0xF0          | 0xFF           |
 '-----------------'----------------'----------------'
 */
-#define BLEWIFI_COM_RF_POWER_SETTINGS   (0x20)
+#define BLEWIFI_COM_RF_POWER_SETTINGS   (0x40)
+#define BLEWIFI_COM_RF_SMPS_SETTING     (2)     //0 : 1.2,  2 : 1.4    
 
 /*
 SNTP
@@ -101,10 +97,10 @@ method 1: use prefix + mac address
 method 2: full name
     The max length of device name is 29 bytes.
 */
-#define BLEWIFI_BLE_DEVICE_NAME_METHOD      1           // 1 or 2
-#define BLEWIFI_BLE_DEVICE_NAME_POST_COUNT  4           // for method 1 "OPL_33:44:55:66"
-#define BLEWIFI_BLE_DEVICE_NAME_PREFIX      "OPL_"      // for method 1 "OPL_33:44:55:66"
-#define BLEWIFI_BLE_DEVICE_NAME_FULL        "OPL1000"   // for method 2
+#define BLEWIFI_BLE_DEVICE_NAME_METHOD          1           // 1 or 2
+#define BLEWIFI_BLE_DEVICE_NAME_POSTFIX_COUNT   4           // for method 1 "OPL_33:44:55:66"
+#define BLEWIFI_BLE_DEVICE_NAME_PREFIX          "OPL_"      // for method 1 "OPL_33:44:55:66"
+#define BLEWIFI_BLE_DEVICE_NAME_FULL            "OPL1000"   // for method 2
 
 /* Advertisement Interval Calculation Method:
 1000 (ms) / 0.625 (ms) = 1600 = 0x640
@@ -162,10 +158,7 @@ if the auto connection is fail, the interval will be increased
 #define HOSTINFO_URL   "testapi.coolkit.cn:8080"
 #define HOSTINFO_DIR   "/api/user/device/update"
 
-/*
-FIM version
-*/
-#define MW_FIM_VER21_PROJECT        0x02    // 0x00 ~ 0xFF
+
 
 // Aliyun Device
 #define ALI_PRODUCT_ID              (0000000)
@@ -173,6 +166,7 @@ FIM version
 #define ALI_PRODUCT_SECRET          "xxxxxxxxxxx" 
 #define ALI_DEVICE_NAME             "xxxxxxxxxxx"
 #define ALI_DEVICE_SECRET           "xxxxxxxxxxx"
+#define ALI_REGION_ID              (0)
 
 
 #ifdef ALI_BLE_WIFI_PROVISION
@@ -192,11 +186,6 @@ FIM version
 /*Aliyun LED On/Off*/
 #define LED_GPIO     GPIO_IDX_23
 #define PROPERITY_LEN_MAX (64)
-
-/*
-FIM version
-*/
-#define MW_FIM_VER23_PROJECT        0x02    // 0x00 ~ 0xFF
 
 /*
 IO Configuration
@@ -241,15 +230,12 @@ Define CR+LF Enable / Disable (Windows:CR+LF, Linux:CR and Mac:LF)
 */
 #define CRLF_ENABLE             (1)
 
-/*
-FIM version
-*/
-#define MW_FIM_VER22_PROJECT        0x02    // 0x00 ~ 0xFF
-
 #define BLEWIFI_CTRL_BOOT_CNT_FOR_ALI_RESET     3
 
 /* Door Debounce time : unit: ms */
 #define DOOR_DEBOUNCE_TIMEOUT        (200)     // 200ms
+
+#define BLEWIFI_REFINE_INIT_FLOW
 
 #endif /* __BLEWIFI_CONFIGURATION_H__ */
 

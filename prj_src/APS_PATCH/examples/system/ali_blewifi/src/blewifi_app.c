@@ -101,7 +101,6 @@ extern void HAL_SetFirmwareVersion(_IN_ char *FwVersion);
 void BleWifiAppInit(void)
 {
     T_MwFim_SysMode tSysMode;
-    T_MwFim_GP11_PowerSaving tPowerSaving;
     
 	gTheOta = 0;
 
@@ -113,13 +112,6 @@ void BleWifiAppInit(void)
     {
         // if fail, get the default value
         memcpy(&tSysMode, &g_tMwFimDefaultSysMode, MW_FIM_SYS_MODE_SIZE);
-    }
-
-    // get the settings of power saving
-    if (MW_FIM_OK != MwFim_FileRead(MW_FIM_IDX_GP11_PROJECT_POWER_SAVING, 0, MW_FIM_GP11_POWER_SAVING_SIZE, (uint8_t*)&tPowerSaving))
-    {
-        // if fail, get the default value
-        memcpy(&tPowerSaving, &g_tMwFimDefaultGp11PowerSaving, MW_FIM_GP11_POWER_SAVING_SIZE);
     }
 
     if (tSysMode.ubSysMode == MW_FIM_SYS_MODE_MP)
@@ -180,10 +172,11 @@ void BleWifiAppInit(void)
         //    ps_smart_sleep(tPowerSaving.ubPowerSaving);
         
         /* RF Power settings */
-        BleWifi_RFPowerSetting(tPowerSaving.ubRFPower);
+        BleWifi_RFPowerSetting(BLEWIFI_COM_RF_POWER_SETTINGS);
 
         // init door
         BleWifi_Ctrl_DoorInit();
+        
     }
 
     // update the system mode

@@ -28,10 +28,13 @@
 #include "infra_config.h"
 #include "awss_dev_reset.h"
 #include "mqtt_wrapper.h"
+#include "mw_fim_default_group15_project.h"
 
 #ifdef ALI_TIMESTAMP
 volatile uint32_t g_u32TsPrevSync = 0;
 volatile uint32_t g_u32TsNextSyncTime = 0;
+
+extern volatile uint8_t g_u8IotUnbind;
 
 extern void user_timestamp_query(void);
 
@@ -294,7 +297,7 @@ void Iot_Data_RxTask(void *args)
             HAL_SetReportReset(1);
             #endif
             
-            awss_report_reset();
+            //awss_report_reset();
             goto done;
         }
         else if (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_UNBIND))
@@ -312,12 +315,9 @@ void Iot_Data_RxTask(void *args)
     
                 BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_UNBIND, false);
                 BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT, false);
-
-                #ifdef ALI_UNBIND_REFINE
-                #else
-                BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_LINK_CONN, false);
-                #endif
-    
+				
+				g_u8IotUnbind = 0;
+				
                 goto done;
             }
             else
@@ -370,11 +370,6 @@ void Iot_Data_RxTask(void *args)
                 }else{
                     printf("BLEWIFI_CTRL_EVENT_BIT_IOT_INIT------------------true\r\n");
                     BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT, true);
-
-                    #ifdef ALI_UNBIND_REFINE
-                    #else
-                    BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_UNBIND, false);
-                    #endif
                 }
             }
 
@@ -511,7 +506,7 @@ void Iot_Data_RxInit(void)
 #if (IOT_DEVICE_DATA_TX_EN == 1) || (IOT_DEVICE_DATA_RX_EN == 1)
 void Iot_Data_Init(void)
 {
-    IoT_Ring_Buffer_Init();
+    IoT_Ring_Buffer_Init();   
 
 #if (IOT_DEVICE_DATA_TX_EN == 1)
     Iot_Data_TxInit();
@@ -522,5 +517,15 @@ void Iot_Data_Init(void)
     hal_ali_netlink_task_init();
     Iot_Data_RxInit();
 #endif
+    
+    T_MwFim_GP15_AliyunInfo AliyunInfo;
+    
+    if(MwFim_FileRead(MW_FIM_IDX_GP15_PROJECT_ALIYUN_INFO, 0, MW_FIM_GP15_ALIYUN_INFO_SIZE, (uint8_t*)&AliyunInfo) != MW_FIM_OK)
+    {
+        // if fail, get the default value
+        memcpy(&AliyunInfo, &g_tMwFimDefaultGp15AliyunInfo, MW_FIM_GP15_ALIYUN_INFO_SIZE);
+    }
+    printf("\nRegion ID from FIM:%d\n", AliyunInfo.ulRegionID);        
+    iotx_guider_set_dynamic_region(AliyunInfo.ulRegionID); 
 }
 #endif  // end of #if (IOT_DEVICE_DATA_TX_EN == 1) || (IOT_DEVICE_DATA_RX_EN == 1)

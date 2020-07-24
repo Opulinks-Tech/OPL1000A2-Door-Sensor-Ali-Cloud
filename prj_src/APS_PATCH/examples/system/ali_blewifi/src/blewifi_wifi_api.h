@@ -123,7 +123,7 @@ void BleWifi_Wifi_MacAddrWrite(uint8_t *data, int len);
 void BleWifi_Wifi_MacAddrRead(uint8_t *data, int len);
 
 int BleWifi_Wifi_SendScanReport(void);
-int BleWifi_Wifi_UpdateScanInfoToAutoConnList(void);
+int BleWifi_Wifi_UpdateScanInfoToAutoConnList(uint8_t *pu8IsUpdate);
 uint8_t BleWifi_Wifi_AutoConnectListNum(void);
 void BleWifi_Wifi_DoAutoConnect(void);
 void BleWifi_Wifi_ReqConnectRetry(void);

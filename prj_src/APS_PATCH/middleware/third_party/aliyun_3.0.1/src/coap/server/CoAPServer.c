@@ -17,10 +17,13 @@ static unsigned int g_coap_running = 0;
     #else
     static void *g_coap_thread = NULL;
     #endif
+#ifdef COAP_ENABLE    
     static void *g_semphore    = NULL;
+#endif    
 #endif
 static CoAPContext *g_context = NULL;
 
+#if 0
 static unsigned int CoAPServerToken_get(unsigned char *p_encoded_data)
 {
     static unsigned int value = COAP_INIT_TOKEN;
@@ -71,6 +74,7 @@ static int CoAPServerPath_2_option(char *uri, CoAPMessage *message)
     }
     return COAP_SUCCESS;
 }
+#endif
 
 void CoAPServer_thread_leave()
 {
@@ -123,10 +127,12 @@ void CoAPServer_add_timer(void (*on_timer)(void *))
     coapserver_timer = on_timer;
 }
 
-
+#ifdef COAP_ENABLE
 static void *coap_init_mutex = NULL;
+#endif
 CoAPContext *CoAPServer_init()
 {
+#ifdef COAP_ENABLE//#ifdef ALI_RHYTHM_SUPPORT
     CoAPInitParam param = {0};
 #ifdef COAP_SERV_MULTITHREAD
     #ifdef ALI_SINGLE_TASK
@@ -203,10 +209,15 @@ CoAPContext *CoAPServer_init()
 
     HAL_MutexUnlock(coap_init_mutex);
     return (CoAPContext *)g_context;
+
+#else
+    return NULL;
+#endif
 }
 
 void CoAPServer_deinit(CoAPContext *context)
 {
+#ifdef COAP_ENABLE//#ifdef ALI_RHYTHM_SUPPORT
     if (context != g_context) {
         COAP_INFO("Invalid CoAP Server context");
         return;
@@ -245,20 +256,25 @@ void CoAPServer_deinit(CoAPContext *context)
     HAL_MutexUnlock(coap_init_mutex);
     HAL_MutexDestroy(coap_init_mutex);
     coap_init_mutex = NULL;
+#endif
 }
 
 int CoAPServer_register(CoAPContext *context, const char *uri, CoAPRecvMsgHandler callback)
 {
+#if 0    
     if (NULL == context || g_context != context) {
         return COAP_ERROR_INVALID_PARAM;
     }
 
     return CoAPResource_register(context, uri, COAP_PERM_GET, COAP_CT_APP_JSON, 60, callback);
+#endif
+return 0;    
 }
 
 int CoAPServerMultiCast_send(CoAPContext *context, NetworkAddr *remote, const char *uri, unsigned char *buff,
                              unsigned short len, CoAPSendMsgHandler callback, unsigned short *msgid)
 {
+#if 0    
     int ret = COAP_SUCCESS;
     CoAPMessage message;
     unsigned char tokenlen;
@@ -290,11 +306,14 @@ int CoAPServerMultiCast_send(CoAPContext *context, NetworkAddr *remote, const ch
     CoAPMessage_destory(&message);
 
     return ret;
+#endif
+    return 0;    
 }
 
 int CoAPServerResp_send(CoAPContext *context, NetworkAddr *remote, unsigned char *buff, unsigned short len, void *req,
                         const char *paths, CoAPSendMsgHandler callback, unsigned short *msgid, char qos)
 {
+#if 0    
     int ret = COAP_SUCCESS;
     CoAPMessage response;
     unsigned int observe = 0;
@@ -329,6 +348,9 @@ int CoAPServerResp_send(CoAPContext *context, NetworkAddr *remote, unsigned char
     CoAPMessage_destory(&response);
 
     return ret;
+#endif 
+
+    return 0;
 }
 
 void CoAPServer_loop(CoAPContext *context)

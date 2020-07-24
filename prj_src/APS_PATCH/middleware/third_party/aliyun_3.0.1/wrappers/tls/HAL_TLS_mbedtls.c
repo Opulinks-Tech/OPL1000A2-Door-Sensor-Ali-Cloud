@@ -104,7 +104,7 @@ static int mbedtls_net_connect_ex( mbedtls_net_context *ctx, const char *host, c
         srand(reg_read(0x40003044));
         
         local_addr.sin_family = AF_INET;
-        local_addr.sin_port = TCP_ENSURE_LOCAL_PORT_RANGE((u32_t)rand());;
+        local_addr.sin_port = htons(TCP_ENSURE_LOCAL_PORT_RANGE((u32_t)rand()));
         local_addr.sin_addr.s_addr = iface->ip_addr.u_addr.ip4.addr;
         if (bind(fd, (struct sockaddr*)&local_addr, sizeof(local_addr)) != 0) {
             printf("bind failed\n");
@@ -118,6 +118,7 @@ static int mbedtls_net_connect_ex( mbedtls_net_context *ctx, const char *host, c
 
         if ( connect( fd, cur->ai_addr, cur->ai_addrlen ) == 0 ) {
             ctx->fd = fd; // connected!
+            printf("\nxxxxxx----fd=%d\n", fd);
             ret = 0;
             fcntl( fd, F_SETFL, fcntl( fd, F_GETFL, 0 ) & ~O_NONBLOCK );
             break;
@@ -139,6 +140,7 @@ static int mbedtls_net_connect_ex( mbedtls_net_context *ctx, const char *host, c
                 if (selres > 0) {
                     //if (FD_ISSET(fd, &rfds) || FD_ISSET(fd, &wfds))
                     if (FD_ISSET(fd, &wfds)) {
+                        printf("\nxxxxxx----fd=%d\n", fd);
                         ctx->fd = fd; // connected!
                         ret = 0;
                         break;

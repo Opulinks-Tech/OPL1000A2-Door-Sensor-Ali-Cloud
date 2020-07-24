@@ -55,7 +55,7 @@ typedef unsigned char uint8_t;
 //#define ALCS_ENABLED
 #define HAL_KV
 
-#define OTA_ENABLED
+//#define OTA_ENABLED
 //#if defined(WORLDWIDE_USE) || defined(OTA_ENABLED)
 #define SUPPORT_TLS
 //#endif
@@ -63,8 +63,8 @@ typedef unsigned char uint8_t;
 #define HAL_CRYPTO
 #define HAL_UDP
 
-#define COAP_PACKET
-#define COAP_SERVER
+//#define COAP_PACKET
+//#define COAP_SERVER
 #define DEV_RESET
 #define DEV_BIND_ENABLED
 #define WIFI_PROVISION_ENABLED
@@ -80,15 +80,26 @@ typedef unsigned char uint8_t;
 
 #define ALI_SINGLE_TASK
 #define ALI_TASK_POLLING_PERIOD     (10) // ms
+
+//#define COAP_ENABLE
 //#define ALI_RHYTHM_SUPPORT
+
+#ifdef ALI_RHYTHM_SUPPORT
+#ifndef COAP_ENABLE
+#error "No Enable CoAP"
+#endif
+#endif
+
 #define ALI_APP_TOKEN_BACKUP
 #define ALI_KEEPALIVE_INTERVAL      (120000) // ms
 
 #define ALI_IOT_RX_DELAY_MAX        (2000) // ms
 #define ALI_IOT_RX_DELAY_MIN        (100) // ms
 
+#define ALI_REPORT_TOKEN_AFTER_UNBIND
+
 #ifdef WORLDWIDE_USE
-#define ALI_UNBIND_REFINE
+//#define ALI_UNBIND_REFINE
 #endif
 
 #ifdef SUPPORT_TLS

@@ -12,8 +12,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include "iot_rb_data.h"
+#include "infra_config.h"
 
-IoT_Ring_buffer_t g_tRBData;
+SHM_DATA IoT_Ring_buffer_t g_tRBData;
 
 void IoT_Ring_Buffer_Init(void)
 {

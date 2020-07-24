@@ -15,7 +15,6 @@
 #include "hal_auxadc.h"
 #include "hal_vic.h"
 #include "sensor_battery.h"
-#include "mw_fim_default_group12_project.h"
 #include "hal_auxadc_patch.h"
 #include "hal_pin.h"
 #include "hal_pin_def.h"

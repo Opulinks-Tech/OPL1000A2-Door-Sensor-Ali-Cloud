@@ -310,7 +310,11 @@ release:
 void BleWifi_Wifi_ResetRecord(void)
 {
     uint8_t ubResetResult = 0;
-    
+
+    printf("\033[1;32;40m");
+    printf("[%s %d] do wifi_auto_connect_reset!!!");
+    printf("\033[0m");
+    printf("\n");
     ubResetResult = wifi_auto_connect_reset();
     BleWifi_Ble_SendResponse(BLEWIFI_RSP_RESET, ubResetResult);
     
@@ -340,7 +344,7 @@ void BleWifi_Wifi_MacAddrRead(uint8_t *data, int len)
     BleWifi_Ble_DataSendEncap(BLEWIFI_RSP_ENG_WIFI_MAC_READ, ubaMacAddr, 6);
 }
 
-static void BleWifi_Wifi_UpdateAutoConnList(uint16_t apCount, wifi_scan_info_t *ap_list)
+static void BleWifi_Wifi_UpdateAutoConnList(uint16_t apCount, wifi_scan_info_t *ap_list,uint8_t *pu8IsUpdate)
 {
     wifi_auto_connect_info_t *info = NULL;
     uint8_t ubAutoCount;
@@ -349,7 +353,10 @@ static void BleWifi_Wifi_UpdateAutoConnList(uint16_t apCount, wifi_scan_info_t *
     // if the count of auto-connection list is empty, don't update the auto-connect list
     ubAutoCount = BleWifi_Wifi_AutoConnectListNum();
     if (0 == ubAutoCount)
+    {
+        *pu8IsUpdate = false;
         return;
+    }
 
     // compare and update the auto-connect list
     // 1. prepare the buffer of auto-connect information
@@ -357,6 +364,7 @@ static void BleWifi_Wifi_UpdateAutoConnList(uint16_t apCount, wifi_scan_info_t *
     if (NULL == info)
     {
         printf("malloc fail, prepare is NULL\r\n");
+        *pu8IsUpdate = false;
         return;
     }
     // 2. comapre
@@ -372,6 +380,7 @@ static void BleWifi_Wifi_UpdateAutoConnList(uint16_t apCount, wifi_scan_info_t *
                 // if the channel is not the same, update it
                 if (ap_list[j].channel != info->ap_channel)
                     wifi_auto_connect_update_ch(i, ap_list[j].channel);
+                *pu8IsUpdate = true;
                 continue;
             }
         }
@@ -427,6 +436,7 @@ int BleWifi_Wifi_SendScanReport(void)
     int32_t i = 0, j = 0;
     uint8_t ubAPPAutoConnectGetApNum = 0;
     wifi_auto_connect_info_t *info = NULL;
+    uint8_t u8IsUpdate = false;
 
     wifi_scan_get_ap_num(&apCount);
 
@@ -445,7 +455,7 @@ int BleWifi_Wifi_SendScanReport(void)
 
     wifi_scan_get_ap_records(&apCount, ap_list);
 
-    BleWifi_Wifi_UpdateAutoConnList(apCount, ap_list);
+    BleWifi_Wifi_UpdateAutoConnList(apCount, ap_list, &u8IsUpdate);
 
     blewifi_ap_list = (blewifi_scan_info_t *)malloc(sizeof(blewifi_scan_info_t) *apCount);
     if (!blewifi_ap_list) {
@@ -515,7 +525,7 @@ err:
     return ubAppErr; 
 }
 
-int BleWifi_Wifi_UpdateScanInfoToAutoConnList(void)
+SHM_DATA int BleWifi_Wifi_UpdateScanInfoToAutoConnList(uint8_t *pu8IsUpdate)
 {
     wifi_scan_info_t *ap_list = NULL;
     uint16_t apCount = 0;
@@ -525,6 +535,7 @@ int BleWifi_Wifi_UpdateScanInfoToAutoConnList(void)
 
     if (apCount == 0) {
         printf("No AP found\r\n");
+        *pu8IsUpdate = false;
         goto err;
     }
     printf("ap num = %d\n", apCount);
@@ -533,12 +544,13 @@ int BleWifi_Wifi_UpdateScanInfoToAutoConnList(void)
     if (!ap_list) {
         printf("malloc fail, ap_list is NULL\r\n");
         ubAppErr = -1;
+        *pu8IsUpdate = false;
         goto err;
     }
 
     wifi_scan_get_ap_records(&apCount, ap_list);
 
-    BleWifi_Wifi_UpdateAutoConnList(apCount, ap_list);
+    BleWifi_Wifi_UpdateAutoConnList(apCount, ap_list, pu8IsUpdate);
 
 err:
     if (ap_list)
@@ -655,7 +667,21 @@ static int BleWifi_Wifi_EventHandler_Disconnected(wifi_event_id_t event_id, void
     uint8_t reason = *((uint8_t*)data);
     
     printf("\r\nWi-Fi Disconnected , reason %d\r\n", reason);
-    BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_WIFI_DISCONNECTION_IND, NULL, 0);
+    
+    if ( reason == 255 )
+    {
+        /* Reset the beacon time (ms) */
+        g_ulBleWifi_Wifi_BeaconTime = 100;
+
+        /* DTIM */
+        BleWifi_Wifi_SetDTIM(0);
+
+        BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_WIFI_RESET_DEFAULT_IND, NULL, 0);
+    }
+    else
+    {
+        BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_WIFI_DISCONNECTION_IND, NULL, 0);
+    }
 
     return 0;
 }
@@ -727,8 +753,7 @@ void BleWifi_Wifi_Init(void)
     wifi_init(NULL, NULL);
 
     /* Wi-Fi operation start */
-    wifi_start();    
-    wifi_auto_connect_set_ap_num(1);
+    wifi_start();
 
     /* Init the beacon time (ms) */
     g_ulBleWifi_Wifi_BeaconTime = 100;

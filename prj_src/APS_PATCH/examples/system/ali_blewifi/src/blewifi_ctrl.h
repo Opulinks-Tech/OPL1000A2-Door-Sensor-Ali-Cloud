@@ -24,11 +24,8 @@
 #include <stdbool.h>
 #include "blewifi_configuration.h"
 #include "mw_fim_default_group11_project.h"
-#include "mw_fim_default_group12_project.h"
 
 #define BLEWIFI_CTRL_QUEUE_SIZE         (20)
-
-#define AverageTimes              (100)
 
 typedef enum blewifi_ctrl_msg_type
 {
@@ -46,6 +43,7 @@ typedef enum blewifi_ctrl_msg_type
 
     /* Wi-Fi Trigger */
     BLEWIFI_CTRL_MSG_WIFI_INIT_COMPLETE = 0x80, //Wi-Fi report status
+    BLEWIFI_CTRL_MSG_WIFI_RESET_DEFAULT_IND,    //Wi-Fi report status
     BLEWIFI_CTRL_MSG_WIFI_SCAN_DONE_IND,        //Wi-Fi report status
     BLEWIFI_CTRL_MSG_WIFI_CONNECTION_IND,       //Wi-Fi report status
     BLEWIFI_CTRL_MSG_WIFI_DISCONNECTION_IND,    //Wi-Fi report status
@@ -189,11 +187,8 @@ typedef enum
     DOOR_STATUS_MAX,
 } T_DoorStatusType;
 
-#define BLEWIFI_CTRL_AUTO_CONN_STATE_IDLE   (g_tAppCtrlWifiConnectSettings.ubConnectRetry + 1)
+#define BLEWIFI_CTRL_AUTO_CONN_STATE_IDLE   (BLEWIFI_WIFI_REQ_CONNECT_RETRY_TIMES + 1)
 #define BLEWIFI_CTRL_AUTO_CONN_STATE_SCAN   (BLEWIFI_CTRL_AUTO_CONN_STATE_IDLE + 1)
-
-extern T_MwFim_GP11_WifiConnectSettings g_tAppCtrlWifiConnectSettings;
-extern T_MwFim_GP12_DCSlope g_tDCSlope;
 
 void BleWifi_Ctrl_SysModeSet(uint8_t mode);
 uint8_t BleWifi_Ctrl_SysModeGet(void);
