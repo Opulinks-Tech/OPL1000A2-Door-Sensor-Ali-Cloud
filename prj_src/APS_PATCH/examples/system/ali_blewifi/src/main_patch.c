@@ -62,6 +62,7 @@ Head Block of The File
 #include "mw_fim_default_group13_project.h"
 #include "mw_fim_default_group15_project.h"
 #include "ipc_patch.h"
+#include "sys_cfg.h"
 
 //#include "hal_wdt.h"
 // Sec 2: Constant Definitions, Imported Symbols, miscellaneous
@@ -366,6 +367,9 @@ static void Main_AppInit_patch(void)
 {
     // add the application initialization from here
     printf("AppInit\n");
+    
+    /* RF Power settings */
+    BleWifi_RFPowerSetting(BLEWIFI_COM_RF_POWER_SETTINGS);
 
 #ifdef __BLEWIFI_TRANSPARENT__
     // the blewifi init will be triggered by AT Cmd

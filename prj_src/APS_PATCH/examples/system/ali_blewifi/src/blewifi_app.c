@@ -125,14 +125,15 @@ void BleWifiAppInit(void)
         /* Aux ADC calibration Initialization */
         Hal_Aux_AdcCal_Init();
 
+        /* blewifi "control" task Initialization */
+        BleWifi_Ctrl_Init();
+        
         /* Wi-Fi Initialization */
         BleWifi_Wifi_Init();
 
         /* BLE Stack Initialization */
         BleWifi_Ble_Init();
 
-        /* blewifi "control" task Initialization */
-        BleWifi_Ctrl_Init();
 
         /* blewifi HTTP OTA */
         #if (WIFI_OTA_FUNCTION_EN == 1)
@@ -171,8 +172,6 @@ void BleWifiAppInit(void)
         //if (tSysMode.ubSysMode == MW_FIM_SYS_MODE_USER)
         //    ps_smart_sleep(tPowerSaving.ubPowerSaving);
         
-        /* RF Power settings */
-        BleWifi_RFPowerSetting(BLEWIFI_COM_RF_POWER_SETTINGS);
 
         // init door
         BleWifi_Ctrl_DoorInit();

@@ -129,6 +129,8 @@ uint32_t g_ulaAppCtrlLedInterval[BLEWIFI_CTRL_LED_NUM] =
     LED_TIME_ALWAYS_OFF
 };
 
+T_MwFim_GP15_AliyunInfo g_tAliyunInfo = {0};
+
 static void BleWifi_Ctrl_TaskEvtHandler_BleInitComplete(uint32_t evt_type, void *data, int len);
 static void BleWifi_Ctrl_TaskEvtHandler_BleAdvertisingCfm(uint32_t evt_type, void *data, int len);
 static void BleWifi_Ctrl_TaskEvtHandler_BleAdvertisingExitCfm(uint32_t evt_type, void *data, int len);
@@ -337,6 +339,8 @@ extern BLE_APP_DATA_T gTheBle;
 extern uint32_t g_seq;
 extern uint8_t g_bind_state;
 extern int ble_advertising_start(ais_adv_init_t *adv);
+extern int awss_clear_reset(void);
+
 void linkkit_event_monitor(int event)
 {
     switch (event) {
@@ -352,13 +356,18 @@ void linkkit_event_monitor(int event)
 //#endif
             
             g_seq = 0;
-            g_bind_state = 0;            
+            g_bind_state = 0;
             iotx_guider_set_dynamic_region(g_nRegion_Id);
             
-            T_MwFim_GP15_AliyunInfo AliyunInfo;
-            
-            AliyunInfo.ulRegionID = g_nRegion_Id;
-            MwFim_FileWrite(MW_FIM_IDX_GP15_PROJECT_ALIYUN_INFO, 0, MW_FIM_GP15_ALIYUN_INFO_SIZE, (uint8_t*)&AliyunInfo);
+            if(g_tAliyunInfo.ulRegionID != g_nRegion_Id)
+            {
+                g_tAliyunInfo.ulRegionID = g_nRegion_Id;
+
+                if(MwFim_FileWrite(MW_FIM_IDX_GP15_PROJECT_ALIYUN_INFO, 0, MW_FIM_GP15_ALIYUN_INFO_SIZE, (uint8_t*)&g_tAliyunInfo) != MW_FIM_OK)
+                {
+                    BLEWIFI_ERROR("MwFim_FileWrite fail for region_id[%d]\r\n", g_nRegion_Id);
+                }
+            }
             
                 
             BLEWIFI_WARN("---- report token success ----\r\n");
@@ -367,6 +376,8 @@ void linkkit_event_monitor(int event)
                 BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_NETWORKING_STOP, NULL, 0);
                 BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_ALI_STOP_BLE, false);
             }
+
+            awss_clear_reset();
             break;
 
         case IOTX_CONN_CLOUD_SUC:
@@ -374,16 +385,24 @@ void linkkit_event_monitor(int event)
             if(true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_PREPARE_ALI_BOOT_RESET))
             {
                 BLEWIFI_WARN("[%s %d] IOTX_CONN_CLOUD_SUC: awss_report_reset for ALI_BOOT_RESET\n", __func__, __LINE__);
+                #ifdef ALI_REPORT_TOKEN_AFTER_UNBIND
+                awss_report_cloud();
+                #else
                 iotx_vendor_dev_reset_type_t reset_type = (iotx_vendor_dev_reset_type_t)2;
                 iotx_sdk_reset(&reset_type);
 //                awss_report_reset();
+                #endif
             }
             else if(true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_WAIT_ALI_RESET))
             {
                 BLEWIFI_WARN("[%s %d] IOTX_CONN_CLOUD_SUC: awss_report_reset for WAIT_ALI_RESET\n", __func__, __LINE__);
+                #ifdef ALI_REPORT_TOKEN_AFTER_UNBIND
+                awss_report_cloud();
+                #else
                 iotx_vendor_dev_reset_type_t reset_type = (iotx_vendor_dev_reset_type_t)2;
                 iotx_sdk_reset(&reset_type);
 //                awss_report_reset();
+                #endif
             }
 
             break;
@@ -397,6 +416,7 @@ void linkkit_event_monitor(int event)
 
         case IOTX_RESET:
         {
+        #if 0
             BLEWIFI_WARN("[%s %d] IOTX_RESET\n", __func__, __LINE__);
 
             if(true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_PREPARE_ALI_BOOT_RESET))
@@ -420,6 +440,7 @@ void linkkit_event_monitor(int event)
             BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_UNBIND, true);
             #endif
             break;
+        #endif
         }
 
         default:

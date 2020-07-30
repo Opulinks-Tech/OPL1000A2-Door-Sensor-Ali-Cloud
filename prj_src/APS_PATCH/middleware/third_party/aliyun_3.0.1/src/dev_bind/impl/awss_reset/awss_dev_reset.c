@@ -15,7 +15,7 @@ extern "C" {
 #define TOPIC_RESET_REPORT_REPLY   "/sys/%s/%s/thing/reset_reply"
 #define METHOD_RESET_REPORT        "thing.reset"
 
-#define AWSS_RESET_REQ_FMT         "{\"id\":%s, \"version\":\"1.0\", \"method\":\"%s\", \"params\":%s}"
+#define AWSS_RESET_REQ_FMT         "{\"id\":%s, \"version\":\"1.0\", \"method\":\"%s\", \"params\":{\"resetKey\":{\"devReset\":\"%d\"}}}"
 
 #define AWSS_KV_RST                "awss.rst"
 #define AWSS_KV_RST_TYPE           "awss.rst.type"

@@ -31,7 +31,6 @@ void utils_hmac_sha1_base64(const char *msg, int msg_len, const char *key, int k
 #if 0 
 SHM_DATA void alcs_rec_auth_select(CoAPContext *ctx, const char *paths, NetworkAddr *from, CoAPMessage *resMsg)
 {
-  
     int seqlen, datalen;
     char *seq, *data;
     char *targetKey = "";
@@ -110,7 +109,7 @@ SHM_DATA void alcs_rec_auth_select(CoAPContext *ctx, const char *paths, NetworkA
     payload.len = strlen(payloadbuf);
 
     alcs_msg_init(ctx, &msg, COAP_MSG_CODE_205_CONTENT, COAP_MESSAGE_TYPE_ACK, 0, &payload, NULL);
-    alcs_sendrsp(ctx, from, &msg, 1, resMsg->header.msgid, &token);    
+    alcs_sendrsp(ctx, from, &msg, 1, resMsg->header.msgid, &token);
 }
 
 SHM_DATA svr_key_info *is_legal_key(CoAPContext *ctx, const char *keyprefix, int prefixlen, const char *keyseq, int seqlen,

@@ -29,6 +29,10 @@
 #include "awss_dev_reset.h"
 #include "mqtt_wrapper.h"
 #include "mw_fim_default_group15_project.h"
+#include "awss_reset.h"
+
+volatile uint8_t g_u8IotBind = 0;
+
 
 #ifdef ALI_TIMESTAMP
 volatile uint32_t g_u32TsPrevSync = 0;
@@ -280,7 +284,6 @@ void Iot_Data_TxInit(void)
 #if (IOT_DEVICE_DATA_RX_EN == 1)
 extern user_example_ctx_t *user_example_get_ctx(void);
 
-#ifdef ALI_SINGLE_TASK
 void Iot_Data_RxTask(void *args)
 {
     int res = 0;
@@ -316,8 +319,28 @@ void Iot_Data_RxTask(void *args)
                 BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_UNBIND, false);
                 BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT, false);
 				
-				g_u8IotUnbind = 0;
-				
+                g_u8IotUnbind = 0;
+
+                {
+                    char rst = 0x01;
+                    int ret = -1;
+                    iotx_vendor_dev_reset_type_t reset_type = IOTX_VENDOR_DEV_RESET_TYPE_UNBIND_ALL_CLEAR;
+                
+                    ret = HAL_Kv_Set(AWSS_KV_RST, &rst, sizeof(rst), 0);
+
+                    if(ret < 0)
+                    {
+                        //printf("[%s %d] HAL_Kv_Set AWSS_KV_RST fail\n", __func__, __LINE__);
+                    }
+                
+                    ret = HAL_Kv_Set(AWSS_KV_RST_TYPE, &reset_type, sizeof(iotx_vendor_dev_reset_type_t), 0);
+
+                    if(ret < 0)
+                    {
+                        //printf("[%s %d] HAL_Kv_Set AWSS_KV_RST_TYPE fail\n", __func__, __LINE__);
+                    }
+                }
+
                 goto done;
             }
             else
@@ -357,6 +380,7 @@ void Iot_Data_RxTask(void *args)
                     //osDelay(ALI_YUN_LINKKIT_DELAY);
                     //continue;
                 }
+                g_u8IotBind = 1;
                 
                 // init behavior
                 printf("BLEWIFI_CTRL_EVENT_BIT_LINK_CONN------------------\r\n");           
@@ -406,77 +430,6 @@ void Iot_Data_RxTask(void *args)
 done:
     return;
 }
-#else //#ifdef ALI_SINGLE_TASK
-void Iot_Data_RxTask(void *args)
-{
-    int res = 0;
-    user_example_ctx_t *user_example_ctx = user_example_get_ctx();
-
-    while (1)
-    {
-        if (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_UNBIND))
-        {
-            printf("BLEWIFI_CTRL_EVENT_BIT_UNBIND------------------\r\n");
-            if (user_example_ctx->master_devid >= 0)
-            {
-                printf("user_example_ctx->master_devid == 0\r\n");
-                IOT_Linkkit_Close(user_example_ctx->master_devid);
-                HAL_ResetAliBindflag();
-            }
-
-            BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_UNBIND, false);
-            BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT, false);
-            BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_LINK_CONN, false);
-        }
-        else if (false == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT))
-        {
-            printf("BLEWIFI_CTRL_EVENT_BIT_IOT_INIT------------------\r\n");
-            if (true == BleWifi_Ctrl_EventStatusWait(BLEWIFI_CTRL_EVENT_BIT_LINK_CONN, 0xFFFFFFFF))
-            {
-            // Create Master Device Resources
-            res = ali_linkkit_init(user_example_ctx);
-            if (res < 0)
-            {
-                printf("ali_linkkit_init Failed\n");
-                osDelay(ALI_YUN_LINKKIT_DELAY);
-                continue;
-            }
-                
-                // init behavior
-                printf("BLEWIFI_CTRL_EVENT_BIT_LINK_CONN------------------\r\n");           
-                //Start Connect Aliyun Server
-                res = IOT_Linkkit_Connect(user_example_ctx->master_devid);
-                if (res < 0) {
-                    printf("IOT_Linkkit_Connect Failed\n");
-                    IOT_Linkkit_Close(user_example_ctx->master_devid);
-                    osDelay(ALI_YUN_LINKKIT_DELAY);
-                    continue;
-                }else{
-                    printf("BLEWIFI_CTRL_EVENT_BIT_IOT_INIT------------------true\r\n");
-                    BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT, true);
-                    BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_UNBIND, false);
-                }
-            }     
-        }
-        else
-        {  
-            if (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_LINK_CONN))
-            {
-                IOT_Linkkit_Tx();
-
-                IOT_Linkkit_Yield(USER_EXAMPLE_YIELD_TIMEOUT_MIN_MS);
-                // rx behavior
-                //osDelay(10000); // if do nothing for rx behavior, the delay must be exist.
-                               // if do something for rx behavior, the delay could be removed
-            }
-            else
-            {
-                osDelay(ALI_YUN_LINKKIT_DELAY);
-            }
-        }  
-    }
-}
-#endif //#ifdef ALI_SINGLE_TASK
 
 #define IOT_DATA_RX_TASK_PRIORITY  osPriorityAboveNormal
 void Iot_Data_RxInit(void)
@@ -504,6 +457,7 @@ void Iot_Data_RxInit(void)
 #endif  // end of #if (IOT_DEVICE_DATA_RX_EN == 1)
 
 #if (IOT_DEVICE_DATA_TX_EN == 1) || (IOT_DEVICE_DATA_RX_EN == 1)
+extern T_MwFim_GP15_AliyunInfo g_tAliyunInfo;
 void Iot_Data_Init(void)
 {
     IoT_Ring_Buffer_Init();   
@@ -518,14 +472,12 @@ void Iot_Data_Init(void)
     Iot_Data_RxInit();
 #endif
     
-    T_MwFim_GP15_AliyunInfo AliyunInfo;
-    
-    if(MwFim_FileRead(MW_FIM_IDX_GP15_PROJECT_ALIYUN_INFO, 0, MW_FIM_GP15_ALIYUN_INFO_SIZE, (uint8_t*)&AliyunInfo) != MW_FIM_OK)
+    if(MwFim_FileRead(MW_FIM_IDX_GP15_PROJECT_ALIYUN_INFO, 0, MW_FIM_GP15_ALIYUN_INFO_SIZE, (uint8_t*)&g_tAliyunInfo) != MW_FIM_OK)
     {
         // if fail, get the default value
-        memcpy(&AliyunInfo, &g_tMwFimDefaultGp15AliyunInfo, MW_FIM_GP15_ALIYUN_INFO_SIZE);
+        memcpy(&g_tAliyunInfo, &g_tMwFimDefaultGp15AliyunInfo, MW_FIM_GP15_ALIYUN_INFO_SIZE);
     }
-    printf("\nRegion ID from FIM:%d\n", AliyunInfo.ulRegionID);        
-    iotx_guider_set_dynamic_region(AliyunInfo.ulRegionID); 
+    printf("\nRegion ID from FIM:%d\n", g_tAliyunInfo.ulRegionID);        
+    iotx_guider_set_dynamic_region(g_tAliyunInfo.ulRegionID);
 }
 #endif  // end of #if (IOT_DEVICE_DATA_TX_EN == 1) || (IOT_DEVICE_DATA_RX_EN == 1)
