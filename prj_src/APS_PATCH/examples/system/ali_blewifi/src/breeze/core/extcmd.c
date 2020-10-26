@@ -20,12 +20,7 @@
 #include "passwd.h"
 #include "infra_config.h"
 #include "infra_compat.h"
-
 #include "blewifi_configuration.h"
-#ifdef BLEWIFI_REFINE_INIT_FLOW
-#include "blewifi_ctrl.h"
-#include "blewifi_ble_api.h"
-#endif
 
 int g_nRegion_Id = 0; //After binding, need to save again.
 
@@ -440,14 +435,10 @@ end:
                 printf("[%s, %d]comboinfo.region_id=%d\n", __FUNCTION__, __LINE__, comboinfo.region_id);
                 g_nRegion_Id = comboinfo.region_id;
                 iotx_guider_set_dynamic_region(comboinfo.region_id);
-#ifdef BLEWIFI_REFINE_INIT_FLOW
-                extern volatile uint8_t g_u8IotUnbind;
-
-                g_u8IotUnbind = 1;
+              
                 BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_LINK_CONN, false);
                 BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_UNBIND, true);
-                BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_PREPARE_ALI_RESET, true);
-#endif
+
             } else if (comboinfo.region_type == REGION_TYPE_MQTTURL) {
 //                printf("[%s, %d]comboinfo.region_mqtturl=%s\n", __FUNCTION__, __LINE__, comboinfo.region_mqtturl);
                 iotx_guider_set_dynamic_mqtt_url(comboinfo.region_mqtturl);

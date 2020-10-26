@@ -110,7 +110,7 @@ typedef struct _item_header_t
 #define KV_ALIGN_MASK ~(sizeof(void *) - 1)  
 
 #define KV_GC_RESERVED   1 /* The reserved block for garbage collection */
-#define KV_GC_STACK_SIZE 1024
+#define KV_GC_STACK_SIZE 256 //default:1024
 
 #define KV_SELF_REMOVE 0
 #define KV_ORIG_REMOVE 1

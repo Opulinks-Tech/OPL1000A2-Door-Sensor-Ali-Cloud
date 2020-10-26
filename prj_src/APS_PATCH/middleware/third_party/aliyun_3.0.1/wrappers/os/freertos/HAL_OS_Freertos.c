@@ -69,10 +69,6 @@
 static osSemaphoreId g_tDevInfoSem = NULL;
 #endif
 
-#ifdef ALI_UNBIND_REFINE
-volatile uint8_t g_u8ReportReset = 0;
-#endif
-
 
 int HAL_GetPartnerID(char *pid_str)
 {
@@ -861,7 +857,7 @@ void HAL_Firmware_Persistence_Start(void) {
 }
 
 
-int HAL_Firmware_Persistence_Write(_IN_ char *buffer, _IN_ uint32_t length)
+SHM_DATA int HAL_Firmware_Persistence_Write(_IN_ char *buffer, _IN_ uint32_t length)
 {
     
     int iRet = -1;
@@ -1369,16 +1365,4 @@ int HAL_GetDeviceID(_OU_ char *device_id)
 
     return strlen(device_id);
 }
-
-#ifdef ALI_UNBIND_REFINE
-uint8_t HAL_GetReportReset(void)
-{
-    return g_u8ReportReset;
-}
-
-void HAL_SetReportReset(uint8_t u8Reset)
-{
-    g_u8ReportReset = (u8Reset)?(1):(0);
-}
-#endif
 

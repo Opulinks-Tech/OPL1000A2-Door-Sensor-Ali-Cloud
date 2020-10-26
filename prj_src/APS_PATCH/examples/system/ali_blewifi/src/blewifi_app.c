@@ -34,6 +34,7 @@
 #include "at_cmd_common.h"
 #include "mw_ota.h"
 #include "hal_auxadc_patch.h"
+#include "ps_patch.h"
 
 #ifdef ALI_BLE_WIFI_PROVISION
 #include "cmsis_os.h"
@@ -117,6 +118,11 @@ void BleWifiAppInit(void)
     if (tSysMode.ubSysMode == MW_FIM_SYS_MODE_MP)
     {
         set_echo_on(false);
+    }
+    
+    if(tSysMode.ubSysMode == MW_FIM_SYS_MODE_USER)
+    {
+        ps_32k_xtal_measure(1000);
     }
 
     // only for the user mode

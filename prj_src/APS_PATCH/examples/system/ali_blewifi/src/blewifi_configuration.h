@@ -22,15 +22,26 @@ Smart sleep
 /*
 RF Power
 
-.-----------------.----------------.----------------.
-|                 |  BLE Low Power | BLE High Power |
-:-----------------+----------------+----------------:
-| WIFI Low power  |  0x00          | 0x0F           |
-:-----------------+----------------+----------------:
-| WIFI High power |  0xF0          | 0xFF           |
-'-----------------'----------------'----------------'
+.-----------------.----------------.
+|                 |  BLE Low Power |
+:-----------------+----------------+
+| WIFI Low power  |  0x00          |
+:-----------------+----------------+
+| WIFI Low power  |  0x20          |
+|   + 2 DB        |                |
+:-----------------+----------------+
+| WIFI Low power  |  0x40          |
+|   + 4 DB        |                |
+:-----------------+----------------+
+| WIFI High power |  0xB0          |
+:-----------------+----------------+
+| WIFI High power |  0xD0          |
+|   + 3 DB        |                |
+| (For SDK >= 20) |                |
+'-----------------+----------------+
+
 */
-#define BLEWIFI_COM_RF_POWER_SETTINGS   (0x40)
+#define BLEWIFI_COM_RF_POWER_SETTINGS   (0xA0)
 #define BLEWIFI_COM_RF_SMPS_SETTING     (2)     //0 : 1.2,  2 : 1.4    
 
 /*
@@ -66,10 +77,10 @@ IoT device
     1. if want to send data to server, set the Tx path to enable
     2. if want to receive data from server, set the Rx path to enable
 */
-#define IOT_DEVICE_DATA_TX_EN               (0)     // 1: enable / 0: disable
+#define IOT_DEVICE_DATA_TX_EN               (1)     // 1: enable / 0: disable
 #define IOT_DEVICE_DATA_RX_EN               (1)     // 1: enable / 0: disable
 #define IOT_DEVICE_DATA_TASK_STACK_SIZE_TX  (1024)
-#define IOT_DEVICE_DATA_TASK_STACK_SIZE_RX  (1024)
+#define IOT_DEVICE_DATA_TASK_STACK_SIZE_RX  (2048)
 #define IOT_DEVICE_DATA_QUEUE_SIZE_TX       (20)
 
 /*
@@ -91,9 +102,9 @@ BLE Service UUID
 method 1: use prefix + mac address
     The max length of prefix is 17 bytes.
     The length of mac address is 12 bytes.
-    
+
     Ex: OPL_33:44:55:66
-    
+
 method 2: full name
     The max length of device name is 29 bytes.
 */
@@ -159,7 +170,6 @@ if the auto connection is fail, the interval will be increased
 #define HOSTINFO_DIR   "/api/user/device/update"
 
 
-
 // Aliyun Device
 #define ALI_PRODUCT_ID              (0000000)
 #define ALI_PRODUCT_KEY             "xxxxxxxxxxx"
@@ -170,7 +180,7 @@ if the auto connection is fail, the interval will be increased
 
 
 #ifdef ALI_BLE_WIFI_PROVISION
-		
+
 /* AIS - Alibaba IoT Service*/
 /* UUIDs */
 #define BLE_UUID_AIS_SERVICE	0xFEB3 /* The UUID of the Alibaba IOT Service. */
@@ -235,7 +245,8 @@ Define CR+LF Enable / Disable (Windows:CR+LF, Linux:CR and Mac:LF)
 /* Door Debounce time : unit: ms */
 #define DOOR_DEBOUNCE_TIMEOUT        (200)     // 200ms
 
-#define BLEWIFI_REFINE_INIT_FLOW
+#define USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS (10000) //default 2000
+#define USER_EXAMPLE_YIELD_TIMEOUT_MIN_MS (100)
 
 #endif /* __BLEWIFI_CONFIGURATION_H__ */
 

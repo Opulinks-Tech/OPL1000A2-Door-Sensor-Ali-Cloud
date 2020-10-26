@@ -42,12 +42,20 @@ const T_MwFim_GP15_AliyunInfo g_tMwFimDefaultGp15AliyunInfo =
 // the address buffer of aliyun device
 uint32_t g_ulaMwFimAddrBufferGP15AliyunInfo[MW_FIM_GP15_ALIYUN_INFO_NUM];
 
+const T_MwFim_GP15_AliyunMqttCfg g_tMwFimDefaultGp15AliyunMqttCfg = {0};
+
+// the address buffer of aliyun device
+uint32_t g_ulaMwFimAddrBufferGP15AliyunMqttCfg[MW_FIM_GP15_ALIYUN_MQTT_CFG_NUM];
+
+
 
 // the information table of group 15
 const T_MwFimFileInfo g_taMwFimGroupTable15_project[] =
 {
     {MW_FIM_IDX_GP15_PROJECT_ALIYUN_INFO,     MW_FIM_GP15_ALIYUN_INFO_NUM,      MW_FIM_GP15_ALIYUN_INFO_SIZE,     (uint8_t*)&g_tMwFimDefaultGp15AliyunInfo,     g_ulaMwFimAddrBufferGP15AliyunInfo},
+    {MW_FIM_IDX_GP15_PROJECT_ALIYUN_MQTT_CFG, MW_FIM_GP15_ALIYUN_MQTT_CFG_NUM,  MW_FIM_GP15_ALIYUN_MQTT_CFG_SIZE, (uint8_t*)&g_tMwFimDefaultGp15AliyunMqttCfg,  g_ulaMwFimAddrBufferGP15AliyunMqttCfg},
 
+    
     // the end, don't modify and remove it
     {0xFFFFFFFF,        0x00,       0x00,       NULL,       NULL}
 };

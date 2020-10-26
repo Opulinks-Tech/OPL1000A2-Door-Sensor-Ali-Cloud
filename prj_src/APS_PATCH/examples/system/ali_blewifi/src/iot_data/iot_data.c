@@ -30,17 +30,19 @@
 #include "mqtt_wrapper.h"
 #include "mw_fim_default_group15_project.h"
 #include "awss_reset.h"
+#include "lwip/etharp.h"
 
-volatile uint8_t g_u8IotBind = 0;
-
+volatile uint8_t g_u8IotPostSuspend = 0;
 
 #ifdef ALI_TIMESTAMP
 volatile uint32_t g_u32TsPrevSync = 0;
 volatile uint32_t g_u32TsNextSyncTime = 0;
-
-extern volatile uint8_t g_u8IotUnbind;
+volatile uint8_t g_u8TsSyncEnable = 0;
 
 extern void user_timestamp_query(void);
+
+osTimerId    g_tkeepaliveTimer;
+osTimerId    g_tAliGetTimeStampTimer;
 
 void Iot_NextSyncTimeSet(void)
 {
@@ -60,7 +62,7 @@ void Iot_NextSyncTimeSet(void)
     }
 
     g_u32TsNextSyncTime = u32Time + 120;
-        
+
     return;
 }
 
@@ -68,6 +70,11 @@ void Iot_TimestampProc(void)
 {
     uint32_t u32Curr = 0;
     uint8_t u8Run = 0;
+    
+    if(!g_u8TsSyncEnable)
+    {
+        goto done;
+    }
 
     u32Curr = BleWifi_SntpGetRawData(0);
 
@@ -117,7 +124,13 @@ void Iot_TimestampProc(void)
         g_u32TsPrevSync = u32Curr;
     }
 
+done:    
     return;
+}
+
+void Iot_TsSyncEnable(uint8_t u8Enable)
+{
+    g_u8TsSyncEnable = u8Enable;
 }
 #endif //#ifdef ALI_TIMESTAMP
 
@@ -135,7 +148,7 @@ static void Iot_Data_TxTaskEvtHandler_DataPost(uint32_t evt_type, void *data, in
 static T_IoT_Data_EvtHandlerTbl g_tAppIotDataTxTaskEvtHandlerTbl[] =
 {
     {IOT_DATA_TX_MSG_DATA_POST,             Iot_Data_TxTaskEvtHandler_DataPost},
-    
+
     {0xFFFFFFFF,                            NULL}
 };
 
@@ -144,6 +157,7 @@ static void Iot_Data_TxTaskEvtHandler_DataPost(uint32_t evt_type, void *data, in
     // get the IoT data here, or the data are from *data and len parameters.
 
     // send the data to cloud
+    IOT_Linkkit_Tx();
 }
 
 void Iot_Data_TxTaskEvtHandler(uint32_t evt_type, void *data, int len)
@@ -225,7 +239,7 @@ int Iot_Data_TxTask_MsgSend(int msg_type, uint8_t *data, int data_len)
         BLEWIFI_ERROR("IotTx: malloc fail\n");
 	    goto error;
     }
-    
+
     pMsg->event = msg_type;
     pMsg->length = data_len;
     if (data_len > 0)
@@ -246,7 +260,7 @@ error:
 	{
 	    free(pMsg);
     }
-	
+
 	return -1;
 }
 
@@ -284,6 +298,7 @@ void Iot_Data_TxInit(void)
 #if (IOT_DEVICE_DATA_RX_EN == 1)
 extern user_example_ctx_t *user_example_get_ctx(void);
 
+#ifdef ALI_SINGLE_TASK
 void Iot_Data_RxTask(void *args)
 {
     int res = 0;
@@ -291,19 +306,7 @@ void Iot_Data_RxTask(void *args)
 
     //while (1)
     {
-        if (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_PREPARE_ALI_RESET))
-        {
-            BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_PREPARE_ALI_RESET, false);
-            BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_WAIT_ALI_RESET, true);
-
-            #ifdef ALI_UNBIND_REFINE
-            HAL_SetReportReset(1);
-            #endif
-            
-            //awss_report_reset();
-            goto done;
-        }
-        else if (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_UNBIND))
+        if (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_UNBIND))
         {
             //if (false == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_WAIT_ALI_RESET))
             if(1)
@@ -315,11 +318,11 @@ void Iot_Data_RxTask(void *args)
                     IOT_Linkkit_Close(user_example_ctx->master_devid);
                     HAL_ResetAliBindflag();
                 }
-    
+
                 BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_UNBIND, false);
                 BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT, false);
 				
-                g_u8IotUnbind = 0;
+
 
                 {
                     char rst = 0x01;
@@ -358,6 +361,143 @@ void Iot_Data_RxTask(void *args)
 
                 if(true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_ALI_WIFI_PRO_1))
                 {
+                #if ALI_TOKEN_FROM_DEVICE
+                    awss_cmp_local_init(AWSS_LC_INIT_SUC);
+                    awss_suc_notify_stop();
+                    awss_suc_notify();
+                #else
+                    extern uint32_t tx_func_indicate(uint8_t cmd, uint8_t *p_data, uint16_t length);
+
+                    uint8_t rsp[] = { 0x01, 0x01, 0x01 };
+                    tx_func_indicate(BZ_CMD_STATUS, rsp, sizeof(rsp));
+                #endif
+                    BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_ALI_WIFI_PRO_1, false);
+                }
+            #endif
+
+                // Create Master Device Resources
+                res = ali_linkkit_init(user_example_ctx);
+                if (res < 0)
+                {
+                    printf("ali_linkkit_init Failed\n");
+                    //osDelay(ALI_YUN_LINKKIT_DELAY);
+                    //continue;
+                }
+                
+                // init behavior
+                printf("BLEWIFI_CTRL_EVENT_BIT_LINK_CONN------------------\r\n");
+                //Start Connect Aliyun Server
+                res = IOT_Linkkit_Connect(user_example_ctx->master_devid);
+                if (res < 0) {
+                    printf("IOT_Linkkit_Connect Failed\n");
+                    IOT_Linkkit_Close(user_example_ctx->master_devid);
+
+                    //printf("lwip_one_shot_arp_enable\n");
+                    lwip_one_shot_arp_enable();
+                    
+                    //osDelay(ALI_YUN_LINKKIT_DELAY);
+                    //continue;
+                }else{
+                    printf("BLEWIFI_CTRL_EVENT_BIT_IOT_INIT------------------true\r\n");
+                    BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT, true);
+                    Iot_TsSyncEnable(0);
+                }
+            }
+
+            goto done;
+        }
+
+        //else
+        {
+            if (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_LINK_CONN))
+            {
+                IOT_Linkkit_Tx();
+
+            #if 1
+                IOT_Linkkit_Yield(g_RxTaskDelayTime);
+            #else
+                IOT_Linkkit_Yield(USER_EXAMPLE_YIELD_TIMEOUT_MIN_MS);
+                // rx behavior
+                //osDelay(10000); // if do nothing for rx behavior, the delay must be exist.
+                               // if do something for rx behavior, the delay could be removed
+                osDelay(g_RxTaskDelayTime);
+            #endif
+                #ifdef ALI_TIMESTAMP
+                Iot_TimestampProc();
+                #endif
+            }
+            else
+            {
+                osDelay(ALI_YUN_LINKKIT_DELAY);
+            }
+        }
+    }
+
+done:
+    return;
+}
+#else
+void Iot_Data_RxTask(void *args)
+{
+    int res = 0;
+    user_example_ctx_t *user_example_ctx = user_example_get_ctx();
+
+    while (1)
+    {
+        if (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_UNBIND))
+        {
+            //if (false == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_WAIT_ALI_RESET))
+            if(1)
+            {
+                printf("BLEWIFI_CTRL_EVENT_BIT_UNBIND------------------\r\n");
+                if (user_example_ctx->master_devid >= 0)
+                {
+                    printf("user_example_ctx->master_devid == 0\r\n");
+                    IOT_Linkkit_Close(user_example_ctx->master_devid);
+                    HAL_ResetAliBindflag();
+                }
+
+                BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_UNBIND, false);
+                BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT, false);
+		        g_u8IotPostSuspend = 1;
+
+                {
+                    char rst = 0x01;
+                    int ret = -1;
+                    iotx_vendor_dev_reset_type_t reset_type = IOTX_VENDOR_DEV_RESET_TYPE_UNBIND_ALL_CLEAR;
+                
+                    ret = HAL_Kv_Set(AWSS_KV_RST, &rst, sizeof(rst), 0);
+
+                    if(ret < 0)
+                    {
+                        //printf("[%s %d] HAL_Kv_Set AWSS_KV_RST fail\n", __func__, __LINE__);
+                    }
+                
+                    ret = HAL_Kv_Set(AWSS_KV_RST_TYPE, &reset_type, sizeof(iotx_vendor_dev_reset_type_t), 0);
+
+                    if(ret < 0)
+                    {
+                        //printf("[%s %d] HAL_Kv_Set AWSS_KV_RST_TYPE fail\n", __func__, __LINE__);
+                    }
+                }
+
+                continue; //goto done;
+            }
+            else
+            {
+                // wait for ali_reset done
+            }
+        }
+        else if (false == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT))
+        {
+            //printf("BLEWIFI_CTRL_EVENT_BIT_IOT_INIT------------------\r\n");
+            if (true == BleWifi_Ctrl_EventStatusWait(BLEWIFI_CTRL_EVENT_BIT_LINK_CONN, ALI_TASK_POLLING_PERIOD))
+            {
+            #ifdef ALI_BLE_WIFI_PROVISION
+                #define BZ_CMD_STATUS 0x1
+
+                if(true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_ALI_WIFI_PRO_1))
+                {
                 #if ALI_TOKEN_FROM_DEVICE        
                     awss_cmp_local_init(AWSS_LC_INIT_SUC);			
                     awss_suc_notify_stop();
@@ -380,42 +520,44 @@ void Iot_Data_RxTask(void *args)
                     //osDelay(ALI_YUN_LINKKIT_DELAY);
                     //continue;
                 }
-                g_u8IotBind = 1;
                 
                 // init behavior
-                printf("BLEWIFI_CTRL_EVENT_BIT_LINK_CONN------------------\r\n");           
+                printf("BLEWIFI_CTRL_EVENT_BIT_LINK_CONN------------------\r\n");
                 //Start Connect Aliyun Server
                 res = IOT_Linkkit_Connect(user_example_ctx->master_devid);
                 if (res < 0) {
                     printf("IOT_Linkkit_Connect Failed\n");
                     IOT_Linkkit_Close(user_example_ctx->master_devid);
+
+                    //printf("lwip_one_shot_arp_enable\n");
+                    lwip_one_shot_arp_enable();
+                    
                     //osDelay(ALI_YUN_LINKKIT_DELAY);
                     //continue;
+                    BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT, false);
                 }else{
                     printf("BLEWIFI_CTRL_EVENT_BIT_IOT_INIT------------------true\r\n");
                     BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT, true);
+                    Iot_TsSyncEnable(0);
                 }
             }
 
-            //goto done;
+            continue;//goto done;
         }
 
         //else
         {
-            if (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_LINK_CONN))
+            if ( (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_LINK_CONN)) && (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_IOT_INIT)) )
             {
+//                printf("\ntrue == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_LINK_CONN)\n", res);
+                #if (IOT_DEVICE_DATA_TX_EN == 1)
+                #else
                 IOT_Linkkit_Tx();
+                #endif
 
-            #if 1
+
                 IOT_Linkkit_Yield(g_RxTaskDelayTime);
-            #else
-                IOT_Linkkit_Yield(USER_EXAMPLE_YIELD_TIMEOUT_MIN_MS);
 
-                // rx behavior
-                //osDelay(10000); // if do nothing for rx behavior, the delay must be exist.
-                               // if do something for rx behavior, the delay could be removed
-				osDelay(g_RxTaskDelayTime);
-            #endif
                 #ifdef ALI_TIMESTAMP
                 Iot_TimestampProc();
                 #endif
@@ -424,12 +566,10 @@ void Iot_Data_RxTask(void *args)
             {
                 osDelay(ALI_YUN_LINKKIT_DELAY);
             }
-        }  
+        }
     }
-
-done:
-    return;
 }
+#endif
 
 #define IOT_DATA_RX_TASK_PRIORITY  osPriorityAboveNormal
 void Iot_Data_RxInit(void)
@@ -458,16 +598,28 @@ void Iot_Data_RxInit(void)
 
 #if (IOT_DEVICE_DATA_TX_EN == 1) || (IOT_DEVICE_DATA_RX_EN == 1)
 extern T_MwFim_GP15_AliyunInfo g_tAliyunInfo;
+extern T_MwFim_GP15_AliyunMqttCfg g_tAliyunMqttCfg;
+extern void post_timing_update(uint32_t u32Dtim, uint32_t u32Delay);
+
+void AliKaAndTSimeout(void const *argu)
+{
+//    BleWifi_Wifi_SetDTIM(BleWifi_Ctrl_DtimTimeGet());
+    post_timing_update(BleWifi_Ctrl_DtimTimeGet(), USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS);
+}
+
 void Iot_Data_Init(void)
 {
-    IoT_Ring_Buffer_Init();   
+    osTimerDef_t timer_gettimestamp_def;    
+    osTimerDef_t timer_mqttkeepalive_def;
+    
+    IoT_Ring_Buffer_Init();
 
 #if (IOT_DEVICE_DATA_TX_EN == 1)
     Iot_Data_TxInit();
 #endif
 
 #if (IOT_DEVICE_DATA_RX_EN == 1)
-    aos_kv_init();	
+    aos_kv_init();
     hal_ali_netlink_task_init();
     Iot_Data_RxInit();
 #endif
@@ -477,7 +629,46 @@ void Iot_Data_Init(void)
         // if fail, get the default value
         memcpy(&g_tAliyunInfo, &g_tMwFimDefaultGp15AliyunInfo, MW_FIM_GP15_ALIYUN_INFO_SIZE);
     }
-    printf("\nRegion ID from FIM:%d\n", g_tAliyunInfo.ulRegionID);        
+    printf("\nRegion ID from FIM:%d\n", g_tAliyunInfo.ulRegionID);
+    
+    #if 1
+    if(MwFim_FileRead(MW_FIM_IDX_GP15_PROJECT_ALIYUN_MQTT_CFG, 0, MW_FIM_GP15_ALIYUN_MQTT_CFG_SIZE, (uint8_t*)&g_tAliyunMqttCfg) != MW_FIM_OK)
+    {
+        // if fail, get the default value
+        memcpy(&g_tAliyunMqttCfg, &g_tMwFimDefaultGp15AliyunMqttCfg, MW_FIM_GP15_ALIYUN_MQTT_CFG_SIZE);
+    }
+
+    printf("\nFIM_MQTT_URL:[%s]\n", g_tAliyunMqttCfg.s8aUrl);
+
+    if(g_tAliyunMqttCfg.s8aUrl[0])
+    {
+        iotx_guider_set_dynamic_region_only(g_tAliyunInfo.ulRegionID);
+        iotx_guider_get_kv_env(); //update guider_env
+        iotx_guider_set_dynamic_mqtt_url(g_tAliyunMqttCfg.s8aUrl);
+    }
+    else
+    {
+        iotx_guider_set_dynamic_region(g_tAliyunInfo.ulRegionID);
+    }
+    #else
     iotx_guider_set_dynamic_region(g_tAliyunInfo.ulRegionID);
+    #endif  
+        
+    /* create timer to trig timestamp */
+    timer_gettimestamp_def.ptimer = AliKaAndTSimeout;
+    g_tAliGetTimeStampTimer = osTimerCreate(&timer_gettimestamp_def, osTimerOnce, NULL);
+    if(g_tAliGetTimeStampTimer == NULL)
+    {
+        printf("create timestamp timer fail \r\n");
+    }
+    
+    /* create timer to trig timestamp */
+    timer_mqttkeepalive_def.ptimer = AliKaAndTSimeout;
+    g_tkeepaliveTimer = osTimerCreate(&timer_mqttkeepalive_def, osTimerOnce, NULL);
+    if(g_tkeepaliveTimer == NULL)
+    {
+        printf("create mqtt keepalive timer fail \r\n");
+    }
+   
 }
 #endif  // end of #if (IOT_DEVICE_DATA_TX_EN == 1) || (IOT_DEVICE_DATA_RX_EN == 1)

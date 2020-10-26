@@ -2,6 +2,13 @@
  * Copyright (C) 2015-2018 Alibaba Group Holding Limited
  */
 #include "mqtt_internal.h"
+#include "cmsis_os.h"
+#include "blewifi_wifi_api.h"
+#include "blewifi_ctrl.h"
+#include "blewifi_configuration.h"
+
+
+extern osTimerId    g_tkeepaliveTimer;
 
 #ifdef LOG_REPORT_TO_CLOUD
     #include "iotx_log_report.h"
@@ -1489,7 +1496,7 @@ static int iotx_mc_handle_recv_UNSUBACK(iotx_mc_client_t *c)
 
     return SUCCESS_RETURN;
 }
-
+extern void post_timing_update(uint32_t u32Dtim, uint32_t u32Delay);
 static int iotx_mc_cycle(iotx_mc_client_t *c, iotx_time_t *timer)
 {
     unsigned int packetType;
@@ -1584,6 +1591,9 @@ static int iotx_mc_cycle(iotx_mc_client_t *c, iotx_time_t *timer)
             rc = SUCCESS_RETURN;
             mqtt_info("receive ping response!");
             printf("\n\nreceive ping response\n\n");
+            osTimerStop(g_tkeepaliveTimer);
+//            BleWifi_Wifi_SetDTIM(BleWifi_Ctrl_DtimTimeGet());
+            post_timing_update(BleWifi_Ctrl_DtimTimeGet(), USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS);
             break;
         }
         default:
@@ -1604,9 +1614,12 @@ void _mqtt_cycle(void *client)
     iotx_mc_client_t *pClient = (iotx_mc_client_t *)client;
 
     iotx_time_init(&time);
-    utils_time_countdown_ms(&time, pClient->cycle_timeout_ms);
+    utils_time_countdown_ms(&time, pClient->cycle_timeout_ms);    
 
-    do {
+    //Kevin: Remove do while loop because whether rc=SUCCESS or Failed, mqtt_cycle will wait util timer expired! 
+    //It will lead to make higher power consumption       
+
+//    do {  
         //unsigned int left_t;
 
         if (SUCCESS_RETURN != rc) {
@@ -1623,9 +1636,12 @@ void _mqtt_cycle(void *client)
             /* check list of wait publish ACK to remove node that is ACKED or timeout */
             MQTTPubInfoProc(pClient);
 #endif
-#endif
+#endif          
         }
+
         HAL_MutexUnlock(pClient->lock_yield);
+        
+      
 
         #if 1 //RD
         HAL_SleepMs(10);
@@ -1637,7 +1653,7 @@ void _mqtt_cycle(void *client)
             HAL_SleepMs(10);
         }
         #endif
-    } while (!utils_time_is_expired(&time));
+//    } while (!utils_time_is_expired(&time));
 }
 
 static int MQTTKeepalive(iotx_mc_client_t *pClient)
@@ -1663,13 +1679,20 @@ static int MQTTKeepalive(iotx_mc_client_t *pClient)
 
     printf("\n\nMQTTSerialize_pingreq\n\n");
 
+    post_timing_update(0, USER_EXAMPLE_YIELD_TIMEOUT_MIN_MS);
+//    BleWifi_Wifi_SetDTIM(0);
     len = MQTTSerialize_pingreq((unsigned char *)pClient->buf_send, pClient->buf_size_send);
     mqtt_debug("len = MQTTSerialize_pingreq() = %d", len);
 
+    osTimerStop(g_tkeepaliveTimer);
+    osTimerStart(g_tkeepaliveTimer, MQTT_KEEP_ALIVE_TIMEOUT_MSEC);
     if (len <= 0) {
         mqtt_err("Serialize ping request is error");
         _reset_send_buffer(pClient);
         HAL_MutexUnlock(pClient->lock_write_buf);
+        osTimerStop(g_tkeepaliveTimer);
+//        BleWifi_Wifi_SetDTIM(BleWifi_Ctrl_DtimTimeGet());]
+        post_timing_update(BleWifi_Ctrl_DtimTimeGet(), USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS);
         return MQTT_PING_PACKET_ERROR;
     }
 
@@ -1680,6 +1703,9 @@ static int MQTTKeepalive(iotx_mc_client_t *pClient)
 
         _reset_send_buffer(pClient);
         HAL_MutexUnlock(pClient->lock_write_buf);
+        osTimerStop(g_tkeepaliveTimer);
+//        BleWifi_Wifi_SetDTIM(BleWifi_Ctrl_DtimTimeGet());
+        post_timing_update(BleWifi_Ctrl_DtimTimeGet(), USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS);
         return MQTT_NETWORK_ERROR;
     }
     _reset_send_buffer(pClient);
@@ -1707,8 +1733,8 @@ static int iotx_mc_keepalive_sub(iotx_mc_client_t *pClient)
     }
 
     /* update to next time sending MQTT keep-alive */
-    //utils_time_countdown_ms(&pClient->next_ping_time, pClient->connect_data.keepAliveInterval * 1000);
-    utils_time_countdown_ms(&pClient->next_ping_time, ALI_KEEPALIVE_INTERVAL);
+    utils_time_countdown_ms(&pClient->next_ping_time, pClient->connect_data.keepAliveInterval * 1000);
+//    utils_time_countdown_ms(&pClient->next_ping_time, ALI_KEEPALIVE_INTERVAL);
 
     rc = MQTTKeepalive(pClient);
     if (SUCCESS_RETURN != rc) {
@@ -2837,7 +2863,8 @@ int wrapper_mqtt_connect(void *client)
     pClient->keepalive_probes = 0;
     iotx_mc_set_client_state(pClient, IOTX_MC_STATE_CONNECTED);
 
-    utils_time_countdown_ms(&pClient->next_ping_time, pClient->connect_data.keepAliveInterval * 1000);
+    //utils_time_countdown_ms(&pClient->next_ping_time, pClient->connect_data.keepAliveInterval * 1000);
+    utils_time_countdown_ms(&pClient->next_ping_time, ALI_KEEPALIVE_INITIAL_INTERVAL);
 
     mqtt_info("mqtt connect success!");
     guider_set_direct_connect_count(0);

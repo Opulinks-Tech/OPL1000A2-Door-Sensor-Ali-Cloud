@@ -39,6 +39,9 @@ Head Block of The File
 #include "sys_init.h"
 #include "sys_init_patch.h"
 #include "hal_system.h"
+#if 1
+#include "hal_tick.h"
+#endif
 #include "hal_pin.h"
 #include "hal_pin_def.h"
 #include "hal_auxadc.h"
@@ -85,6 +88,18 @@ Declaration of Global Variables & Functions
 extern uint8_t* g_ucaMemPartAddr;
 extern uint32_t g_ulMemPartTotalSize;
 extern osMemoryDef_t g_xaMemoryTable[MAX_NUM_MEM_POOL];
+
+#if 1
+typedef struct
+{
+    uint8_t u8Used;
+    int iId;
+} T_PostInfo;
+
+extern T_PostInfo g_tPrevPostInfo;
+
+uint32_t    g_ulSysWakeupTime;
+#endif
 
 // Sec 5: declaration of global function prototype
 
@@ -152,8 +167,8 @@ void __Patch_EntryPoint(void)
     at_cmd_switch_uart1_dbguart = Main_AtUartDbgUartSwitch;
     
     // modify the heap size, from 0x439000 to 0x44F000
-    g_ucaMemPartAddr = (uint8_t*) 0x439000;
-    g_ulMemPartTotalSize = 0x16000;
+    g_ucaMemPartAddr = (uint8_t*) 0x439200;
+    g_ulMemPartTotalSize = 0x15E00;
     
     g_xaMemoryTable[0].ulBlockSize = 32;
     g_xaMemoryTable[0].ulBlockNum  = 80;
@@ -169,7 +184,7 @@ void __Patch_EntryPoint(void)
     g_xaMemoryTable[7].ulBlockNum = 0;
 //    g_xaMemoryTable[8].ulBlockNum = 0; 
     
-    Sys_SetUnsuedSramEndBound(0x439000);
+    Sys_SetUnsuedSramEndBound(0x439200);
 	    
     // application init
     Sys_AppInit = Main_AppInit_patch;
@@ -307,6 +322,15 @@ static void Main_MiscDriverConfigSetup(void)
             Main_ApsUartRxDectecConfig();
         }
     }
+#if 1
+    else
+    {
+        if(g_tPrevPostInfo.u8Used)
+        {
+            g_ulSysWakeupTime = Hal_Tick_Diff(0);
+        }
+    }
+#endif    
 }
 
 /*************************************************************************

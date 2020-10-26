@@ -38,6 +38,7 @@ typedef enum
     MW_FIM_IDX_GP15_PROJECT_START = 0x01050000,             // the start IDX of group 21
     
     MW_FIM_IDX_GP15_PROJECT_ALIYUN_INFO,
+    MW_FIM_IDX_GP15_PROJECT_ALIYUN_MQTT_CFG,
     
     MW_FIM_IDX_GP15_PROJECT_MAX
 } E_MwFimIdxGroup15_Project;
@@ -54,8 +55,19 @@ typedef struct
 
 } T_MwFim_GP15_AliyunInfo;
 
+#define MW_FIM_GP15_MQTT_URL_SIZE   128
+
+typedef struct
+{
+    char s8aUrl[MW_FIM_GP15_MQTT_URL_SIZE];
+
+} T_MwFim_GP15_AliyunMqttCfg;
+
 #define MW_FIM_GP15_ALIYUN_INFO_SIZE  sizeof(T_MwFim_GP15_AliyunInfo)
 #define MW_FIM_GP15_ALIYUN_INFO_NUM   1
+
+#define MW_FIM_GP15_ALIYUN_MQTT_CFG_SIZE    sizeof(T_MwFim_GP15_AliyunMqttCfg)
+#define MW_FIM_GP15_ALIYUN_MQTT_CFG_NUM     1
 
 /********************************************
 Declaration of Global Variables & Functions
@@ -64,6 +76,7 @@ Declaration of Global Variables & Functions
 extern const T_MwFimFileInfo g_taMwFimGroupTable15_project[];
 
 extern const T_MwFim_GP15_AliyunInfo g_tMwFimDefaultGp15AliyunInfo;
+extern const T_MwFim_GP15_AliyunMqttCfg g_tMwFimDefaultGp15AliyunMqttCfg;
 
 
 // Sec 5: declaration of global function prototype

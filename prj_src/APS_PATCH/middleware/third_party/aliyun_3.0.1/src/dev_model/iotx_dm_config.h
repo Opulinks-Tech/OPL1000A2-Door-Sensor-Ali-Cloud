@@ -14,11 +14,11 @@
 #define IOTX_DM_CLIENT_KEEPALIVE_INTERVAL_MS  (1200000)
 
 #ifndef CONFIG_MQTT_TX_MAXLEN
-    #define CONFIG_MQTT_TX_MAXLEN           (1024)
+    #define CONFIG_MQTT_TX_MAXLEN           (1536)
 #endif
 
 #ifndef CONFIG_MQTT_RX_MAXLEN
-    #define CONFIG_MQTT_RX_MAXLEN           (1024)
+    #define CONFIG_MQTT_RX_MAXLEN           (1536)
 #endif
 
 #ifndef CONFIG_DISPATCH_QUEUE_MAXLEN

@@ -330,7 +330,7 @@ done:
 int app_at_cmd_sys_dtim_time(char *buf, int len, int mode)
 {
     int iRet = 0;
-#if 0    
+#if 1    
     int argc = 0;
     char *argv[AT_MAX_CMD_ARGS] = {0};
 

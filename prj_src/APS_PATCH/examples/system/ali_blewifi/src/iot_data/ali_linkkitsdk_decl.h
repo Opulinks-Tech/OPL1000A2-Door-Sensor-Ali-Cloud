@@ -32,8 +32,6 @@
 #include "iot_rb_data.h"
 
 extern uint32_t g_RxTaskDelayTime;
-extern uint8_t g_userNeedReply;
-//extern uint8_t g_noReplyCount;
 
 void *HAL_Malloc(uint32_t size);
 void HAL_Free(void *ptr);
@@ -52,8 +50,7 @@ typedef struct {
     #define CUSTOME_DOMAIN_HTTP     "iot-auth.cn-shanghai.aliyuncs.com"
 #endif
 
-#define USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS (2000) //modify to 3000
-#define USER_EXAMPLE_YIELD_TIMEOUT_MIN_MS (100)
+
 
 #define EXAMPLE_TRACE(...)                               \
 do {                                                     \

@@ -13,15 +13,11 @@
 #include "breeze_hal_ble.h"
 #include "breeze_hal_sec.h"
 #include "infra_config.h"
-
 #include "blewifi_configuration.h"
-#ifdef BLEWIFI_REFINE_INIT_FLOW
 #include "blewifi_ctrl.h"
 #include "blewifi_ble_api.h"
-#endif
 
 extern core_t g_core;
-auth_t g_auth;
 
 static uint8_t g_ds[BZ_DEV_DEVICE_SECRET_LEN] = { 0 };
 static uint8_t g_ds_len = 0;

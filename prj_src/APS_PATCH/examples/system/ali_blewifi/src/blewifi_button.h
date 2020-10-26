@@ -20,7 +20,7 @@
 #define BLEWIFI_CTRL_KEY_PRESS_TIME         (5000)    // ms
 #define BLEWIFI_CTRL_KEY_RELEASE_COUNT_TIME (800)     // ms
 #define BLEWIFI_CTRL_BLEADVSTOP_TIME        (180000)  // ms
-
+#define BLEWIFI_CTRL_BLEDISC_TIME           (10000)  // ms
 
 typedef enum
 {

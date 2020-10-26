@@ -329,7 +329,6 @@ int mbedtls_platform_set_nv_seed(
 /*
  * Placeholder platform setup that does nothing by default
  */
-#if 0
 int mbedtls_platform_setup( mbedtls_platform_context *ctx )
 {
     (void)ctx;
@@ -344,7 +343,6 @@ void mbedtls_platform_teardown( mbedtls_platform_context *ctx )
 {
     (void)ctx;
 }
-#endif
 #endif /* MBEDTLS_PLATFORM_SETUP_TEARDOWN_ALT */
 
 #endif /* MBEDTLS_PLATFORM_C */

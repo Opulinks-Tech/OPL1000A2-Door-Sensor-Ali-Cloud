@@ -468,10 +468,7 @@ void SysInit_EntryPoint(void)
     le_ctrl_pre_patch_init();
 
     // 8. le_host
-    //LeHostPatchAssign();
-    void LeGapIfPatch_Init(void);
-    LeGapIfPatch_Init();
-
+    LeHostPatchAssign();
 
     // 9. LwIP
     lwip_module_interface_init_patch();

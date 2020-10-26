@@ -59,7 +59,7 @@ static T_BleWifi_Wifi_EventHandlerTbl g_tWifiEventHandlerTbl[] =
     {0xFFFFFFFF,                        NULL}
 };
 
-void BleWifi_Wifi_DoScan(uint8_t *data, int len)
+void BleWifi_Wifi_DoScan(uint8_t *data, int len, uint8_t *pu8BySsid)
 {
     wifi_scan_config_t scan_config = {0};
     scan_config.show_hidden = data[0];
@@ -67,9 +67,10 @@ void BleWifi_Wifi_DoScan(uint8_t *data, int len)
 
 #ifdef ALI_BLE_WIFI_PROVISION 
     //if(g_Ali_wifi_provision==1)
-    if(true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_ALI_WIFI_PRO_1))
-    {    
-        scan_config.ssid = (uint8_t *)g_apInfo.ssid;
+    //if(true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_ALI_WIFI_PRO_1))
+    if(pu8BySsid)
+    {
+        scan_config.ssid = pu8BySsid;
     }
 #endif
     wifi_scan_start(&scan_config, NULL);

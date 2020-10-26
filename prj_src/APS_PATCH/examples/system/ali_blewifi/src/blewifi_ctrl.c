@@ -50,10 +50,8 @@
 #include "lwip/etharp.h"
 #include "mqtt_wrapper.h"
 #include "blewifi_configuration.h"
+#include "iot_data.h"
 
-#ifdef ALI_REPORT_TOKEN_AFTER_UNBIND
-#include "dev_bind_api.h"
-#endif
 
 #ifdef ALI_BLE_WIFI_PROVISION
 #include "awss_notify.h"
@@ -129,7 +127,10 @@ uint32_t g_ulaAppCtrlLedInterval[BLEWIFI_CTRL_LED_NUM] =
     LED_TIME_ALWAYS_OFF
 };
 
+uint32_t g_u32AppAliWifiScanCount = 0;
+
 T_MwFim_GP15_AliyunInfo g_tAliyunInfo = {0};
+T_MwFim_GP15_AliyunMqttCfg g_tAliyunMqttCfg = {0};
 
 static void BleWifi_Ctrl_TaskEvtHandler_BleInitComplete(uint32_t evt_type, void *data, int len);
 static void BleWifi_Ctrl_TaskEvtHandler_BleAdvertisingCfm(uint32_t evt_type, void *data, int len);
@@ -357,7 +358,6 @@ void linkkit_event_monitor(int event)
             
             g_seq = 0;
             g_bind_state = 0;
-            iotx_guider_set_dynamic_region(g_nRegion_Id);
             
             if(g_tAliyunInfo.ulRegionID != g_nRegion_Id)
             {
@@ -371,9 +371,12 @@ void linkkit_event_monitor(int event)
             
                 
             BLEWIFI_WARN("---- report token success ----\r\n");
+            BLEWIFI_WARN("[%s %d] BleWifi_Wifi_SetDTIM(%d)\n", __func__, __LINE__, BleWifi_Ctrl_DtimTimeGet());
+            BleWifi_Wifi_SetDTIM(BleWifi_Ctrl_DtimTimeGet()); 
             if (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_ALI_STOP_BLE))
             {
                 BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_NETWORKING_STOP, NULL, 0);
+                BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_CLOUD_CONN, NULL, 0);
                 BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_ALI_STOP_BLE, false);
             }
 
@@ -382,67 +385,31 @@ void linkkit_event_monitor(int event)
 
         case IOTX_CONN_CLOUD_SUC:
         {
-            if(true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_PREPARE_ALI_BOOT_RESET))
-            {
-                BLEWIFI_WARN("[%s %d] IOTX_CONN_CLOUD_SUC: awss_report_reset for ALI_BOOT_RESET\n", __func__, __LINE__);
-                #ifdef ALI_REPORT_TOKEN_AFTER_UNBIND
-                awss_report_cloud();
-                #else
-                iotx_vendor_dev_reset_type_t reset_type = (iotx_vendor_dev_reset_type_t)2;
-                iotx_sdk_reset(&reset_type);
-//                awss_report_reset();
-                #endif
-            }
-            else if(true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_WAIT_ALI_RESET))
-            {
-                BLEWIFI_WARN("[%s %d] IOTX_CONN_CLOUD_SUC: awss_report_reset for WAIT_ALI_RESET\n", __func__, __LINE__);
-                #ifdef ALI_REPORT_TOKEN_AFTER_UNBIND
-                awss_report_cloud();
-                #else
-                iotx_vendor_dev_reset_type_t reset_type = (iotx_vendor_dev_reset_type_t)2;
-                iotx_sdk_reset(&reset_type);
-//                awss_report_reset();
-                #endif
-            }
+            BLEWIFI_WARN("[%s %d] IOTX_CONN_CLOUD_SUC\n", __func__, __LINE__);
 
+            #if 0
+            if(true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_NETWORK))
+            {
+                BLEWIFI_WARN("[%s %d] iotx_sdk_reset\n", __func__, __LINE__);
+
+                iotx_vendor_dev_reset_type_t reset_type = (iotx_vendor_dev_reset_type_t)2;
+                iotx_sdk_reset(&reset_type);
+//                awss_report_reset();
+            }
+            #endif
+            
             break;
         }
 
         case IOTX_CONN_CLOUD_FAIL:
         {
-
             break;
         }
 
         case IOTX_RESET:
         {
-        #if 0
-            BLEWIFI_WARN("[%s %d] IOTX_RESET\n", __func__, __LINE__);
-
-            if(true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_PREPARE_ALI_BOOT_RESET))
-            {
-                BLEWIFI_WARN("[%s %d] disable ALI_BOOT_RESET\n", __func__, __LINE__);
-
-                BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_PREPARE_ALI_BOOT_RESET, false);
-            }
-            else if(true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_WAIT_ALI_RESET))
-            {
-                BLEWIFI_WARN("[%s %d] disable WAIT_ALI_RESET\n", __func__, __LINE__);
-
-                BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_WAIT_ALI_RESET, false);
-#ifdef ALI_REPORT_TOKEN_AFTER_UNBIND
-                awss_report_cloud();
-#endif
-            }
-
-            #ifdef ALI_UNBIND_REFINE
-            HAL_SetReportReset(0);
-            BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_UNBIND, true);
-            #endif
             break;
-        #endif
         }
-
         default:
             break;
     }
@@ -546,7 +513,21 @@ void BleWifi_Ctrl_DoAutoConnect(void)
         {
             data[0] = 1;    // Enable to scan AP whose SSID is hidden
             data[1] = 2;    // mixed mode
-            BleWifi_Wifi_DoScan(data, 2);
+            
+
+        #if 0 //Allen use
+            wifi_auto_connect_info_t tInfo = {0};
+            uint8_t *pu8Ssid = NULL;
+
+            if(!wifi_auto_connect_get_ap_info(0, &tInfo))
+            {
+                pu8Ssid = (uint8_t *)tInfo.ssid;
+            }
+
+            BleWifi_Wifi_DoScan(data, 2, pu8Ssid);
+        #else
+            BleWifi_Wifi_DoScan(data, 2, NULL);
+        #endif
 
             g_ubAppCtrlRequestRetryTimes = BLEWIFI_CTRL_AUTO_CONN_STATE_SCAN;
         }
@@ -609,45 +590,44 @@ void BleWifi_Ctrl_SysTimeout(void const *argu)
 #ifdef ALI_BLE_WIFI_PROVISION
 int BleWifi_Wifi_Get_BSsid(void)
 {
+    int iRet = -1;
     wifi_scan_info_t *ap_list = NULL;
     uint16_t apCount = 0;
-    int8_t ubAppErr = 0;
     int32_t i = 0;
-
+	
     wifi_scan_get_ap_num(&apCount);
-
+	
     if(apCount == 0)
     {
         BLEWIFI_ERROR("No AP found\r\n");
         goto err;
-	}
-	BLEWIFI_ERROR("ap num = %d\n", apCount);
-	ap_list = (wifi_scan_info_t *)malloc(sizeof(wifi_scan_info_t) * apCount);
-
-	if (!ap_list) {
+    }
+    BLEWIFI_ERROR("ap num = %d\n", apCount);
+    ap_list = (wifi_scan_info_t *)malloc(sizeof(wifi_scan_info_t) * apCount);
+	
+    if (!ap_list) {
         BLEWIFI_ERROR("Get_BSsid: malloc fail\n");
-		ubAppErr = -1;
-		goto err;
-	}
-
+        goto err;
+    }
+	
     wifi_scan_get_ap_records(&apCount, ap_list);
 
-
     /* build blewifi ap list */
-	for (i = 0; i < apCount; ++i)
-	{
+    for (i = 0; i < apCount; ++i)
+    {
         if(!memcmp(ap_list[i].ssid, g_apInfo.ssid, sizeof(ap_list[i].ssid) ))
-		{
+        {
             memcpy(g_apInfo.bssid, ap_list[i].bssid, 6);
+            iRet = 0;
             break;
         }
     }
+
 err:
     if (ap_list)
         free(ap_list);
-
-    return ubAppErr;
-
+    
+    return iRet;
 
 }
 
@@ -711,13 +691,7 @@ static void BleWifi_Ctrl_TaskEvtHandler_BleConnectionComplete(uint32_t evt_type,
 {
     BLEWIFI_INFO("BLEWIFI: MSG BLEWIFI_CTRL_MSG_BLE_CONNECTION_COMPLETE \r\n");
     BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_BLE, true);
-#ifdef ALI_BLE_WIFI_PROVISION
-    #ifdef BLEWIFI_REFINE_INIT_FLOW
-    #else
-    BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_LINK_CONN, false);
-    BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_UNBIND, true);
-    #endif
-#endif
+
     /* BLE Init Step 4: BLE said it's connected with a peer BLE device */
 }
 
@@ -864,8 +838,32 @@ static void BleWifi_Ctrl_TaskEvtHandler_WifiScanDoneInd(uint32_t evt_type, void 
         }
         else
         {
-            BleWifi_Wifi_Get_BSsid();
-            Ali_WiFi_Connect(strlen(g_apInfo.ssid),  6, strlen(g_apInfo.pw));
+            if(!BleWifi_Wifi_Get_BSsid())
+            {
+                Ali_WiFi_Connect(strlen(g_apInfo.ssid),  6, strlen(g_apInfo.pw));
+            }
+            else
+            {
+                if(g_u32AppAliWifiScanCount < 5)
+                {
+                    uint8_t tmpdata[2] = {0};
+    
+                    tmpdata[0] = 1;	// Enable to scan AP whose SSID is hidden
+                    tmpdata[1] = 2;	// mixed mode
+    
+                    BleWifi_Wifi_DoScan(tmpdata, 2, (uint8_t *)g_apInfo.ssid);
+
+                    ++g_u32AppAliWifiScanCount;
+                }
+                else
+                {
+                    // disc before next time auto-conn
+                    if(true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_WIFI))
+                    {
+                        BleWifi_Wifi_DoDisconnect();
+                    }
+                }
+            }
         }
 #endif
     }
@@ -1072,7 +1070,8 @@ static void BleWifi_Ctrl_TaskEvtHandler_AliWifiConnect(uint32_t evt_type, void *
     tmpdata[1] = 2;	// mixed mode
     //g_Ali_wifi_provision =1;
     BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_ALI_WIFI_PRO_1, true);
-    BleWifi_Wifi_DoScan(tmpdata, 2);
+    g_u32AppAliWifiScanCount = 0;
+    BleWifi_Wifi_DoScan(tmpdata, 2, (uint8_t *)g_apInfo.ssid);
 }
 #endif
 
@@ -1163,6 +1162,10 @@ void door_status_post(uint8_t u8TrigType)
     {
         BLEWIFI_ERROR("[%s %d] IoT_Ring_Buffer_Push fail\n", __func__, __LINE__);
     }
+    
+#if (IOT_DEVICE_DATA_TX_EN == 1)
+    Iot_Data_TxTask_MsgSend(IOT_DATA_TX_MSG_DATA_POST, NULL, 0);
+#endif    
 
 done:
     return;
@@ -1306,6 +1309,7 @@ void BleWifi_Ctrl_NetworkingStart(void)
         BLEWIFI_INFO("[%s %d] start\n", __func__, __LINE__);
 
         BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_NETWORK, true);
+        BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_NETWORK_BLE_ADV, true);
         BleWifi_Ctrl_LedStatusChange();
 
         // restart timer
@@ -1323,7 +1327,7 @@ void BleWifi_Ctrl_NetworkingStart(void)
     }
 }
 
-void BleWifi_Ctrl_NetworkingStop(void)
+void BleWifi_Ctrl_NetworkingStop(uint8_t u8RestartBleAdvTimer)
 {
     if (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_NETWORK))
     {
@@ -1332,23 +1336,10 @@ void BleWifi_Ctrl_NetworkingStop(void)
         BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_NETWORK, false);
         BleWifi_Ctrl_LedStatusChange();
 
-        // stop timer
-        osTimerStop(g_tAppButtonBleAdvTimerId);
-
-#if 0   // Terence remove
-        // stop adv or disconnect
-        if(false == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_BLE))
+        if((u8RestartBleAdvTimer) && (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_NETWORK_BLE_ADV)))
         {
-            //BleWifi_Ble_StopAdvertising();
-
-            /* When button press timer is finish, then change ble time from 0.5 second to 10 second */
-            BleWifi_Ble_AdvertisingTimeChange(BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_PS_MIN, BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_PS_MAX);
-        }
-        else
-#endif
-        {
-            //BleWifi_Ble_Disconnect();
-            BleWifi_Ble_AdvertisingTimeChange(BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_PS_MIN, BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_PS_MAX);
+            osTimerStop(g_tAppButtonBleAdvTimerId);
+            osTimerStart(g_tAppButtonBleAdvTimerId, BLEWIFI_CTRL_BLEDISC_TIME);
         }
     }
     else
@@ -1426,7 +1417,37 @@ static void BleWifi_Ctrl_TaskEvtHandler_ButtonReleaseTimeOut(uint32_t evt_type, 
 static void BleWifi_Ctrl_TaskEvtHandler_ButtonBleAdvTimeOut(uint32_t evt_type, void *data, int len)
 {
     BLEWIFI_INFO("BLEWIFI: MSG BLEWIFI_CTRL_MSG_BUTTON_BLE_ADV_TIMEOUT \r\n");
-    BleWifi_Ctrl_NetworkingStop();
+    BleWifi_Ctrl_NetworkingStop(0);
+    
+    if (true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_NETWORK_BLE_ADV))
+    {
+        BleWifi_Ctrl_EventStatusSet(BLEWIFI_CTRL_EVENT_BIT_NETWORK_BLE_ADV, false);
+    
+        // stop timer
+        osTimerStop(g_tAppButtonBleAdvTimerId);    
+
+#if 0   // Terence remove
+        // stop adv or disconnect
+        if(false == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_BLE))
+        {
+            //BleWifi_Ble_StopAdvertising();
+
+            /* When button press timer is finish, then change ble time from 0.5 second to 10 second */
+            BleWifi_Ble_AdvertisingTimeChange(BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_PS_MIN, BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_PS_MAX);
+        }
+        else
+#endif
+        {
+            //BleWifi_Ble_Disconnect();
+            BleWifi_Ble_AdvertisingTimeChange(BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_PS_MIN, BLEWIFI_BLE_ADVERTISEMENT_INTERVAL_PS_MAX);
+        }
+
+        
+    }
+    else
+    {
+        BLEWIFI_WARN("[%s %d] BLEWIFI_CTRL_EVENT_BIT_NETWORK_BLE_ADV already false\n", __func__, __LINE__);
+    }
 }
 
 static void BleWifi_Ctrl_TaskEvtHandler_NetworkingStart(uint32_t evt_type, void *data, int len)
@@ -1436,7 +1457,7 @@ static void BleWifi_Ctrl_TaskEvtHandler_NetworkingStart(uint32_t evt_type, void 
 
 static void BleWifi_Ctrl_TaskEvtHandler_NetworkingStop(uint32_t evt_type, void *data, int len)
 {
-    BleWifi_Ctrl_NetworkingStop();
+    BleWifi_Ctrl_NetworkingStop(1);
 }
 
 static void BleWifi_Ctrl_TaskEvtHandler_CloudConnected(uint32_t evt_type, void *data, int len)

@@ -117,12 +117,13 @@ typedef enum blewifi_ctrl_sys_state
 #define POST_DATA_TIME              (3600000)  // 1 hour - smart sleep for one hour then post data
 
 // event group bit (0 ~ 23 bits)
-#define BLEWIFI_CTRL_EVENT_BIT_BLE      0x00000001U
-#define BLEWIFI_CTRL_EVENT_BIT_WIFI     0x00000002U
-#define BLEWIFI_CTRL_EVENT_BIT_OTA      0x00000004U
-#define BLEWIFI_CTRL_EVENT_BIT_GOT_IP   0x00000008U
-#define BLEWIFI_CTRL_EVENT_BIT_IOT_INIT 0x00000010U
-#define BLEWIFI_CTRL_EVENT_BIT_NETWORK  0x00000020U
+#define BLEWIFI_CTRL_EVENT_BIT_BLE              0x00000001U
+#define BLEWIFI_CTRL_EVENT_BIT_WIFI             0x00000002U
+#define BLEWIFI_CTRL_EVENT_BIT_OTA              0x00000004U
+#define BLEWIFI_CTRL_EVENT_BIT_GOT_IP           0x00000008U
+#define BLEWIFI_CTRL_EVENT_BIT_IOT_INIT         0x00000010U
+#define BLEWIFI_CTRL_EVENT_BIT_NETWORK          0x00000020U
+#define BLEWIFI_CTRL_EVENT_BIT_NETWORK_BLE_ADV  0x00000040U
 
 #ifdef ALI_BLE_WIFI_PROVISION
 #define BLEWIFI_CTRL_EVENT_BIT_UNBIND                   0x00001000U
@@ -130,9 +131,6 @@ typedef enum blewifi_ctrl_sys_state
 #define BLEWIFI_CTRL_EVENT_BIT_ALI_STOP_BLE             0x00004000U
 #define BLEWIFI_CTRL_EVENT_BIT_ALI_WIFI_PRO             0x00008000U     // from connection to got ip
 #define BLEWIFI_CTRL_EVENT_BIT_ALI_WIFI_PRO_1           0x00010000U // from scan to got ip
-#define BLEWIFI_CTRL_EVENT_BIT_PREPARE_ALI_RESET        0x00020000U
-#define BLEWIFI_CTRL_EVENT_BIT_WAIT_ALI_RESET           0x00040000U
-#define BLEWIFI_CTRL_EVENT_BIT_PREPARE_ALI_BOOT_RESET   0x00080000U
 #endif
 
 #define BLEWIFI_CTRL_EVENT_BIT_DOOR             0x00100000U  // Door (Key) Status
@@ -206,7 +204,7 @@ void BleWifi_Ctrl_DoorInit(void);
 void BleWifi_Ctrl_ButtonReleaseHandle(uint8_t u8ReleaseCount);
 
 void BleWifi_Ctrl_NetworkingStart(void);
-void BleWifi_Ctrl_NetworkingStop(void);
+void BleWifi_Ctrl_NetworkingStop(uint8_t u8RestartBleAdvTimer);
 
 void BleWifi_Ctrl_BootCntUpdate(void);
 

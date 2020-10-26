@@ -13,6 +13,9 @@
 #include "ali_linkkitsdk_decl.h"
 #include "blewifi_configuration.h"
 #include "hal_vic.h"
+#if 1
+#include "hal_tick.h"
+#endif
 #include "blewifi_ctrl.h"
 #include "blewifi_ctrl_http_ota.h"
 #include "lwip/etharp.h"
@@ -24,11 +27,19 @@
 #include "util_func.h"
 #include "blewifi_common.h"
 #include "mqtt_wrapper.h"
+#include "lwip/etharp.h"
+#include "iot_data.h"
+#include "mw_fim_default_group15_project.h"
+#include "breeze_export.h"
+
+extern osTimerId g_tAliGetTimeStampTimer;
+extern breeze_dev_info_t dinfo;
 
 typedef struct
 {
     uint8_t u8Used;
     int iId;
+    uint32_t u32Cnt;
 } T_PostInfo;
 
 T_PostInfo g_tPrevPostInfo = {0};
@@ -36,21 +47,19 @@ T_PostInfo g_tPrevPostInfo = {0};
 extern void iotx_mc_set_client_state(iotx_mc_client_t *pClient, iotx_mc_state_t newState);
 
 uint32_t g_RxTaskDelayTime = USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS;
-uint8_t g_userNeedReply = 0;
-//uint8_t g_noReplyCount = 0;
 uint32_t g_u32PrevTimeStamp = 0;
+
+#if 1
+extern uint32_t g_ulSysWakeupTime;
+extern uint32_t g_ulBleWifi_Wifi_BeaconTime;
+#define RESERVED_AUXADC_DETECT_MSEC     (20)
+#endif
 
 // {"LocalTimer":[  => 15
 // {"PowerSwitch":0,"Timer":"55 17 * * 1,2,3,4,5,6,7","Enable":1,"IsValid":1},  => 75
 // ]} and '\0'   => 3
 #define PER_STATUS_PROPERTY_LEN     256 //32
 #define PER_REPEAT_BUF_LEN          16
-
-char DEMO_PRODUCT_KEY[IOTX_PRODUCT_KEY_LEN + 1] = {0};
-char DEMO_DEVICE_NAME[IOTX_DEVICE_NAME_LEN + 1] = {0};
-char DEMO_DEVICE_SECRET[IOTX_DEVICE_SECRET_LEN + 1] = {0};
-char DEMO_PRODUCT_SECRET[IOTX_PRODUCT_SECRET_LEN + 1] = {0};
-
 
 static user_example_ctx_t g_user_example_ctx;
 
@@ -69,6 +78,7 @@ void post_timing_update(uint32_t u32Dtim, uint32_t u32Delay)
 
 static int user_connected_event_handler(void)
 {
+    extern volatile uint8_t g_u8IotPostSuspend;
     user_example_ctx_t *user_example_ctx = user_example_get_ctx();
 
     EXAMPLE_TRACE("Cloud Connected");
@@ -77,14 +87,43 @@ static int user_connected_event_handler(void)
     ota_service_init(NULL);
 #endif
 
-    BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_CLOUD_CONN, NULL, 0);
+    if( 1 == g_u8IotPostSuspend ){
+        g_u8IotPostSuspend = 0;
+        
+    }else{
 
-    IoT_Ring_Buffer_ResetBuffer();
-	
+        BLEWIFI_WARN("[%s %d] BleWifi_Wifi_SetDTIM(%d)\n", __func__, __LINE__, BleWifi_Ctrl_DtimTimeGet());
+        BleWifi_Wifi_SetDTIM(BleWifi_Ctrl_DtimTimeGet()); 
+        BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_CLOUD_CONN, NULL, 0);
+    }
+    
+    #if 1
+    {
+        extern T_MwFim_GP15_AliyunMqttCfg g_tAliyunMqttCfg;
+        extern int guider_get_dynamic_mqtt_url(char *p_mqtt_url, int mqtt_url_buff_len);
+    
+        char s8aMqttUrl[MW_FIM_GP15_MQTT_URL_SIZE] = {0};
+    
+        if(!guider_get_dynamic_mqtt_url(s8aMqttUrl, MW_FIM_GP15_MQTT_URL_SIZE))
+        {
+            if(strcmp(s8aMqttUrl, g_tAliyunMqttCfg.s8aUrl))
+            {
+                snprintf(g_tAliyunMqttCfg.s8aUrl, sizeof(g_tAliyunMqttCfg.s8aUrl), "%s", s8aMqttUrl);
+
+                //printf("update mqtt_url[%s]\n", g_tAliyunMqttCfg.s8aUrl);
+    
+                if(MwFim_FileWrite(MW_FIM_IDX_GP15_PROJECT_ALIYUN_MQTT_CFG, 0, MW_FIM_GP15_ALIYUN_MQTT_CFG_SIZE, (uint8_t*)&g_tAliyunMqttCfg) != MW_FIM_OK)
+                {
+                    BLEWIFI_ERROR("MwFim_FileWrite fail for MQTT_URL[%s]\n", g_tAliyunMqttCfg.s8aUrl);
+                }
+            }
+        }
+    }
+    #endif
+    
+
 	/* Terence, reset status */
 	g_RxTaskDelayTime = USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS;
-	g_userNeedReply = 0;
-//	g_noReplyCount = 0;
 
     return 0;
 }
@@ -99,12 +138,16 @@ static int user_disconnected_event_handler(void)
 
     BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_CLOUD_DISC, NULL, 0);
 
+    #ifdef ALI_POST_CTRL
     IoT_Ring_Buffer_ResetBuffer();
+    post_info_clear();
+    #endif
 
 	/* Terence, reset status */
 	g_RxTaskDelayTime = USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS;
-	g_userNeedReply = 0;
-//	g_noReplyCount = 0;
+
+    //EXAMPLE_TRACE("lwip_one_shot_arp_enable\n");
+    lwip_one_shot_arp_enable();
 
     return 0;
 }
@@ -204,24 +247,58 @@ static int user_report_reply_event_handler(const int devid, const int msgid, con
     const char *reply_value = (reply == NULL) ? ("NULL") : (reply);
     const int reply_value_len = (reply_len == 0) ? (strlen("NULL")) : (reply_len);
 
+#if 1    
+    uint32_t ulDiffTick;
+    uint32_t ulDiffTickMSec;
+    uint32_t ulAuxadcDelayTime;
+#endif    
+
     EXAMPLE_TRACE("Message Post Reply Received, Devid: %d, Message ID: %d, Code: %d, Reply: %.*s", devid, msgid, code,
                   reply_value_len,
                   reply_value);
 
+    
+
     if(g_tPrevPostInfo.u8Used)
     {
+#if 1
+        ulDiffTick = Hal_Tick_Diff(g_ulSysWakeupTime);
+        ulDiffTickMSec = (ulDiffTick / Hal_Tick_PerMilliSec()) % g_ulBleWifi_Wifi_BeaconTime;
+        ulAuxadcDelayTime = g_ulBleWifi_Wifi_BeaconTime - ulDiffTickMSec;
+
+        if ( ulAuxadcDelayTime > RESERVED_AUXADC_DETECT_MSEC )
+        {
+            osDelay(ulAuxadcDelayTime - RESERVED_AUXADC_DETECT_MSEC);
+        }
+#endif
+        UpdateBatteryContent();
+
         if(code == 200)
         {
             if(msgid == g_tPrevPostInfo.iId)
             {
                 EXAMPLE_TRACE("msgid[%d] == prev_post_id[%d]\n", msgid, g_tPrevPostInfo.iId);
 
-                post_info_clear();
-                
-                UpdateBatteryContent();
-//                printf("UpdateBatteryContent()\n");
-    
+                g_tPrevPostInfo.u32Cnt += 1;
+
+                //Purpose is that get time stamp until device report initialization status completely.
+                if(g_tPrevPostInfo.u32Cnt == 1) 
+                {
+                    extern void Iot_TsSyncEnable(uint8_t u8Enable);
+
+                    Iot_TsSyncEnable(1);
+                }
+
+                //post_info_clear();
+                g_tPrevPostInfo.u8Used = 0;
+
                 post_timing_update(BleWifi_Ctrl_DtimTimeGet(), USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS);
+
+                if (IOT_RB_DATA_OK != IoT_Ring_Buffer_CheckEmpty())
+                {
+                    Iot_Data_TxTask_MsgSend(IOT_DATA_TX_MSG_DATA_POST, NULL, 0);
+                }
+
             }
             else
             {
@@ -255,6 +332,7 @@ static int user_report_reply_event_handler(const int devid, const int msgid, con
         EXAMPLE_TRACE("no prev_post info\n");
     }
 
+
     return 0;
 }
 
@@ -272,6 +350,10 @@ static int user_trigger_event_reply_event_handler(const int devid, const int msg
 static int user_timestamp_reply_event_handler(const char *timestamp)
 {
     EXAMPLE_TRACE("Current Timestamp: %s", timestamp);
+    
+    osTimerStop(g_tAliGetTimeStampTimer);
+    post_timing_update(BleWifi_Ctrl_DtimTimeGet(), USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS);
+
 
     #ifdef ALI_TIMESTAMP
     if(timestamp)
@@ -280,7 +362,7 @@ static int user_timestamp_reply_event_handler(const char *timestamp)
         uint32_t u32Timestamp = 0;
 
         extern void Iot_NextSyncTimeSet(void);
-    
+
         u64TimestampMs = strtoull(timestamp, NULL, 10);
         u32Timestamp = u64TimestampMs / 1000;
 
@@ -470,6 +552,10 @@ void user_post_property(IoT_Properity_t *ptProp)
 //        post_timing_update(0, USER_EXAMPLE_YIELD_TIMEOUT_MIN_MS);
         post_info_update(res, ps8Buf, u32Offset);
     }
+    else
+    {
+        post_timing_update(BleWifi_Ctrl_DtimTimeGet(), USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS);
+    }
 
 PROPERITY_ERR:
     if (ps8Buf) {
@@ -483,7 +569,7 @@ void user_post_property(uint8_t IsSwitchOnOff)
     int res = 0;
     user_example_ctx_t *user_example_ctx = user_example_get_ctx();
     char *property_payload = "NULL";
-    
+
     property_payload = HAL_Malloc(PROPERITY_LEN_MAX);
     if (!property_payload) {
         goto PROPERITY_ERR;
@@ -498,7 +584,7 @@ void user_post_property(uint8_t IsSwitchOnOff)
                              (unsigned char *)property_payload, strlen(property_payload));
 
     EXAMPLE_TRACE("Post Property Message ID: %d", res);
-    
+
     HAL_Free(property_payload);
 
 
@@ -568,15 +654,11 @@ int ali_linkkit_init(user_example_ctx_t *user_example_ctx)
 	
     iotx_linkkit_dev_meta_info_t    master_meta_info;
     
-    HAL_GetProductKey(DEMO_PRODUCT_KEY);
-    HAL_GetProductSecret(DEMO_PRODUCT_SECRET);
-    HAL_GetDeviceName(DEMO_DEVICE_NAME);
-    HAL_GetDeviceSecret(DEMO_DEVICE_SECRET);
     memset(&master_meta_info, 0, sizeof(iotx_linkkit_dev_meta_info_t));
-    memcpy(master_meta_info.product_key, DEMO_PRODUCT_KEY, strlen(DEMO_PRODUCT_KEY));
-    memcpy(master_meta_info.product_secret, DEMO_PRODUCT_SECRET, strlen(DEMO_PRODUCT_SECRET));
-    memcpy(master_meta_info.device_name, DEMO_DEVICE_NAME, strlen(DEMO_DEVICE_NAME));
-    memcpy(master_meta_info.device_secret, DEMO_DEVICE_SECRET, strlen(DEMO_DEVICE_SECRET));
+    memcpy(master_meta_info.product_key, dinfo.product_key, strlen(dinfo.product_key));
+    memcpy(master_meta_info.product_secret, dinfo.product_secret, strlen(dinfo.product_secret));
+    memcpy(master_meta_info.device_name, dinfo.device_name, strlen(dinfo.device_name));
+    memcpy(master_meta_info.device_secret, dinfo.device_secret, strlen(dinfo.device_secret));
     
     IOT_RegisterCallback(ITE_CONNECT_SUCC, user_connected_event_handler);
     IOT_RegisterCallback(ITE_DISCONNECTED, user_disconnected_event_handler);
@@ -636,11 +718,16 @@ void IOT_Linkkit_Tx()
         {
             goto done;
         }
-        
         lwip_one_shot_arp_enable();
+#if 1               
         IoT_Ring_Buffer_Pop(&IoT_Properity);  
+#else
+        while(IOT_RB_DATA_OK != IoT_Ring_Buffer_CheckEmpty())
+        {
+            IoT_Ring_Buffer_Pop(&IoT_Properity);  
+        }
+#endif
         user_post_property(&IoT_Properity);
-        //IoT_Ring_Buffer_ReadIdxUpdate();
     }
 
 done:
@@ -657,6 +744,22 @@ void user_timestamp_query(void)
 {
     user_example_ctx_t *user_example_ctx = user_example_get_ctx();
 
-    IOT_Linkkit_Query(user_example_ctx->master_devid, ITM_MSG_QUERY_TIMESTAMP, NULL, 0);
+    post_timing_update(0, USER_EXAMPLE_YIELD_TIMEOUT_MIN_MS);
+
+    int res = IOT_Linkkit_Query(user_example_ctx->master_devid, ITM_MSG_QUERY_TIMESTAMP, NULL, 0);
+    
+    
+    if(res >= 0)
+    {
+        osTimerStop(g_tAliGetTimeStampTimer);
+        osTimerStart(g_tAliGetTimeStampTimer, GET_TIME_STAMP_TIMEOUT_MSEC);
+    }
+    else
+    {
+        osTimerStop(g_tAliGetTimeStampTimer);
+        post_timing_update(BleWifi_Ctrl_DtimTimeGet(), USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS);
+    }
+    
+
 }
 #endif

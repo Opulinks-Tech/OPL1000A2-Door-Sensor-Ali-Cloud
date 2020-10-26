@@ -55,7 +55,7 @@ typedef unsigned char uint8_t;
 //#define ALCS_ENABLED
 #define HAL_KV
 
-//#define OTA_ENABLED
+#define OTA_ENABLED
 //#if defined(WORLDWIDE_USE) || defined(OTA_ENABLED)
 #define SUPPORT_TLS
 //#endif
@@ -78,7 +78,7 @@ typedef unsigned char uint8_t;
 #else   // the original
 #endif
 
-#define ALI_SINGLE_TASK
+//#define ALI_SINGLE_TASK
 #define ALI_TASK_POLLING_PERIOD     (10) // ms
 
 //#define COAP_ENABLE
@@ -91,7 +91,11 @@ typedef unsigned char uint8_t;
 #endif
 
 #define ALI_APP_TOKEN_BACKUP
+#define ALI_KEEPALIVE_INITIAL_INTERVAL  (30000) // ms
 #define ALI_KEEPALIVE_INTERVAL      (120000) // ms
+
+#define ALI_NET_CONNECT_TIMEOUT         (5) // sec
+#define ALI_NET_SEND_TIMEOUT            (5) // sec
 
 #define ALI_IOT_RX_DELAY_MAX        (2000) // ms
 #define ALI_IOT_RX_DELAY_MIN        (100) // ms
@@ -111,4 +115,6 @@ typedef unsigned char uint8_t;
 
 #define SHM_DATA    __attribute__((section("SHM_REGION")))
 
+#define GET_TIME_STAMP_TIMEOUT_MSEC (5000)
+#define MQTT_KEEP_ALIVE_TIMEOUT_MSEC (5000)
 #endif
