@@ -15,7 +15,5 @@ For use download tool  please refer document "OPL1000-patch-download-tool-user-g
 3. PatchData.txt: script file that used to pack M0 and M3 binary file together. 
 
 [Note] 
-
-1. OPL1000 hardware setting is different when adopt different power supply method. Hence user shall choose opl1000_m0.bin or opl1000_m0_ldo.bin according to hardware design scheme. 
-3. When user develops own application, M3 binary will be created by user. And it shall be packed with  M0 binary file in order to generate integrated firmware.  
+1. When user develops own application, M3 binary will be created by user. And it shall be packed with M0 binary file in order to generate integrated firmware.  
 
