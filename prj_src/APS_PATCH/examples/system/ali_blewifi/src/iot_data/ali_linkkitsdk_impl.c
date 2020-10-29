@@ -743,21 +743,25 @@ void iot_save_all_cfg(void)
 void user_timestamp_query(void)
 {
     user_example_ctx_t *user_example_ctx = user_example_get_ctx();
-
-    post_timing_update(0, USER_EXAMPLE_YIELD_TIMEOUT_MIN_MS);
-
-    int res = IOT_Linkkit_Query(user_example_ctx->master_devid, ITM_MSG_QUERY_TIMESTAMP, NULL, 0);
     
-    
-    if(res >= 0)
+    if( true == BleWifi_Ctrl_EventStatusGet(BLEWIFI_CTRL_EVENT_BIT_CLOUD_CONN))
     {
-        osTimerStop(g_tAliGetTimeStampTimer);
-        osTimerStart(g_tAliGetTimeStampTimer, GET_TIME_STAMP_TIMEOUT_MSEC);
-    }
-    else
-    {
-        osTimerStop(g_tAliGetTimeStampTimer);
-        post_timing_update(BleWifi_Ctrl_DtimTimeGet(), USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS);
+
+        post_timing_update(0, USER_EXAMPLE_YIELD_TIMEOUT_MIN_MS);
+
+        int res = IOT_Linkkit_Query(user_example_ctx->master_devid, ITM_MSG_QUERY_TIMESTAMP, NULL, 0);
+        
+        
+        if(res >= 0)
+        {
+            osTimerStop(g_tAliGetTimeStampTimer);
+            osTimerStart(g_tAliGetTimeStampTimer, GET_TIME_STAMP_TIMEOUT_MSEC);
+        }
+        else
+        {
+            osTimerStop(g_tAliGetTimeStampTimer);
+            post_timing_update(BleWifi_Ctrl_DtimTimeGet(), USER_EXAMPLE_YIELD_TIMEOUT_MAX_MS);
+        }
     }
     
 
