@@ -37,7 +37,7 @@ volatile uint8_t g_u8IotPostSuspend = 0;
 #ifdef ALI_TIMESTAMP
 volatile uint32_t g_u32TsPrevSync = 0;
 volatile uint32_t g_u32TsNextSyncTime = 0;
-volatile uint8_t g_u8TsSyncEnable = 0;
+volatile uint8_t g_u8TsSyncEnable = 1;
 
 extern void user_timestamp_query(void);
 
@@ -130,7 +130,7 @@ done:
 
 void Iot_TsSyncEnable(uint8_t u8Enable)
 {
-    g_u8TsSyncEnable = u8Enable;
+//    g_u8TsSyncEnable = u8Enable;
 }
 #endif //#ifdef ALI_TIMESTAMP
 

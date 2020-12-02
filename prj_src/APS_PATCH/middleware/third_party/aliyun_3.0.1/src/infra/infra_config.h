@@ -113,6 +113,8 @@ typedef unsigned char uint8_t;
 #define timer_dbg           printf
 //#define timer_dbg(...)
 
+#define ALI_POST_CTRL
+
 #define SHM_DATA    __attribute__((section("SHM_REGION")))
 
 #define GET_TIME_STAMP_TIMEOUT_MSEC (5000)

@@ -35,6 +35,8 @@
 extern osTimerId g_tAliGetTimeStampTimer;
 extern breeze_dev_info_t dinfo;
 
+extern void post_info_clear(void);
+
 typedef struct
 {
     uint8_t u8Used;
@@ -96,6 +98,11 @@ static int user_connected_event_handler(void)
         BleWifi_Wifi_SetDTIM(BleWifi_Ctrl_DtimTimeGet()); 
         BleWifi_Ctrl_MsgSend(BLEWIFI_CTRL_MSG_CLOUD_CONN, NULL, 0);
     }
+    
+    #ifdef ALI_POST_CTRL
+    IoT_Ring_Buffer_ResetBuffer();
+    post_info_clear();
+    #endif
     
     #if 1
     {
@@ -315,7 +322,7 @@ static int user_report_reply_event_handler(const int devid, const int msgid, con
 
             if((_mqtt_conncection) && (_mqtt_conncection->context))
             {
-                iotx_mc_set_client_state(_mqtt_conncection->context, IOTX_MC_STATE_DISCONNECTED_RECONNECTING);
+                iotx_mc_set_client_state(_mqtt_conncection->context, IOTX_MC_STATE_DISCONNECTED);
             }
             else
             {
